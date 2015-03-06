@@ -24,8 +24,6 @@
     '(()())
     ))
 
-;SYAING THINGS BECAUSE JAKE WANTS ME TO BLAHDAH BLAHDAH BLAHDAH TAXES
-
 ;adds a layer to the state
 (define addLayer
   (lambda (state)
@@ -75,7 +73,7 @@
 ;M_state_block
 (define M_state_block
   (lambda (stmt state)
-    (removeLayer ((M_state smtmt (addLayer state))))))
+    (removeLayer ((M_state (cdr stmt) (addLayer state))))))
 
 ;M_state_break
 (define M_state_break
