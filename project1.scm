@@ -282,10 +282,9 @@
   (lambda (while state)
     (call/cc (lambda (break)
                (letrec ((loop (lambda (condition body state)
-                                (call/cc (lambda (continue)
-                                           (if (M_bool condition state)
-                                               (loop condition body (M_state body state continue break))
-                                               state))))))
+                                (if (M_bool condition state)
+                                    (loop condition body (call/cc (lambda (continue) (M_state body state continue break))))
+                                    state))))
                  (loop (condition while) (body while) state))))))
 
 ;misc while helper functions
