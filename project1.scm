@@ -118,7 +118,7 @@
   (lambda (var val state return)
     (if (isdeclaredinlayer? var (topLayer state))
         (return (cons (updatevarlayer var val (topLayer state)) (removeLayer state)))
-        (updatevar var val (removeLayer state) (lambda (v) (cons (topLayer state) v))))))
+        (updatevar2 var val (removeLayer state) (lambda (v) (cons (topLayer state) v))))))
 
 (define updatevarlayer
   (lambda (var val layer)
@@ -157,7 +157,7 @@
     (cond
       ((null? (car layer)) #f)
       ((eq? varname (firstvarname layer)) #t)
-      (else (isdeclared? varname (trimlayer layer))))))
+      (else (isdeclaredinlayer? varname (trimlayer layer))))))
     
 ;returns the value assigned to varname in the state
 (define M_value_var
@@ -299,7 +299,7 @@
 ;M_state_block
 (define M_state_block
   (lambda (stmt state)
-    (removeLayer ((evaluate (cdr stmt) (addLayer state))))))
+    (removeLayer (evaluate (cdr stmt) (addLayer state)))))
 
 ;M_state_break
 (define M_state_break
