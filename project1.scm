@@ -147,7 +147,7 @@
         ((lambda (varval)
           (if varval
               varval
-              (isDeclared? varname (removeLayer state))))
+              (isdeclared? varname (removeLayer state))))
          (isdeclaredinlayer? varname (topLayer state))))))
         
 
