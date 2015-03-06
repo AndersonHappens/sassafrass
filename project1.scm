@@ -118,7 +118,7 @@
   (lambda (var val state return)
     (if (isdeclaredinlayer? var (topLayer state))
         (return (cons (updatevarlayer var val (topLayer state)) (removeLayer state)))
-        (updatevar2 var val (removeLayer state) (lambda (v) (cons (topLayer state) v))))))
+        (updatevar2 var val (removeLayer state) (lambda (v) (return (cons (topLayer state) v)))))))
 
 (define updatevarlayer
   (lambda (var val layer)
@@ -137,7 +137,7 @@
     (cond
       ((null? (car layer)) '())
       ((eq? var (firstvarname layer)) (trimlayer layer))
-      (else (addvar (firstvarname layer) (firstvarvalue layer) (removevar var (trimlayer layer)))))))
+      (else (addvarlayer (firstvarname layer) (firstvarvalue layer) (removevarlayer var (trimlayer layer)))))))
 
 ;checks if a var is declared in the state
 (define isdeclared?
