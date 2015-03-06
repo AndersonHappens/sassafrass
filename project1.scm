@@ -34,6 +34,11 @@
   (lambda (state)
     (cdr state)))
 
+;topLayer
+(define topLayer
+  (lambda (state)
+    (car state)))
+
 ;evaluate the parse tree
 (define evaluate
   (lambda (stmts state)
