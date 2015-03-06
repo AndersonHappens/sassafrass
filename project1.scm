@@ -106,6 +106,7 @@
   (lambda (var val state)
     (cons (cons (cons var (vars (topLayer state))) (cons (cons val (vals (topLayer state))) '())) (cdr state))))
 
+;add var to specific layer for when someone is reassigning a value
 (define addvarlayer
   (lambda (var val layer)
     (cons (cons var (vars layer)) (cons (cons val (vals layer)) '()))))
@@ -114,13 +115,13 @@
 (define updatevar
   (lambda (var val state)
     (updatevar2 var val state (lambda (v) v))))
-
+; helper method for updating a variable
 (define updatevar2
   (lambda (var val state return)
     (if (isdeclaredinlayer? var (topLayer state))
         (return (cons (updatevarlayer var val (topLayer state)) (removeLayer state)))
         (updatevar2 var val (removeLayer state) (lambda (v) (return (cons (topLayer state) v)))))))
-
+; updates a variable in a specific layer
 (define updatevarlayer
   (lambda (var val layer)
     (addvarlayer var val (removevarlayer var layer))))
@@ -278,6 +279,7 @@
   (lambda (l)
     (caddr l)))
 
+;M_State_while, handles the while loop with continues and breaks.
 (define M_state_while
   (lambda (while state)
     (call/cc (lambda (break)
@@ -296,17 +298,17 @@
   (lambda (while)
     (caddr while)))
 
-;M_state_block
+;M_state_block, handles block statements
 (define M_state_block
   (lambda (stmt state continue break)
     (removeLayer (evaluate (cdr stmt) (addLayer state) (lambda (v) (continue (removeLayer v))) (lambda (v) (break (removeLayer v)))))))
 
-;M_state_break
+;M_state_break, handles break
 (define M_state_break
   (lambda (state break)
     (break state)))
 
-;M_state_continue
+;M_state_continue, handles continue
 (define M_state_continue
   (lambda (state continue)
     (continue state)))
