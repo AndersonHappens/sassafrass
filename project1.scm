@@ -34,7 +34,7 @@
   (lambda (state)
     (cdr state)))
 
-;topLayer
+;returns the top layer of a state
 (define topLayer
   (lambda (state)
     (car state)))
@@ -103,7 +103,7 @@
 ;addvar adds a var and it's initial value ('() if undefined) to state at the top level
 (define addvar
   (lambda (var val state)
-    (cons (cons var (vars (topLayer state))) (cons (cons val (vals (topLayer state))) '()))))
+    (cons (cons (cons var (vars (topLayer state))) (cons (cons val (vals (topLayer state))) '())) (cdr state))))
 
 (define addvarlayer
   (lambda (var val layer)
@@ -117,7 +117,7 @@
 (define updatevar2
   (lambda (var val state return)
     (if (isdeclaredinlayer? var (topLayer state))
-        (return (cons (updatevarlayer var val (toplayer state)) (removeLayer state)))
+        (return (cons (updatevarlayer var val (topLayer state)) (removeLayer state)))
         (updatevar var val (removeLayer state) (lambda (v) (cons (topLayer state) v))))))
 
 (define updatevarlayer
@@ -167,7 +167,7 @@
         ((lambda (varval)
           (if (null? varval)
               (M_value_var varname (removeLayer state))
-              (varval)))
+              varval))
          (M_value_var_layer varname (topLayer state)))))
 
 ;returns the value assigned to varname in a layer
@@ -177,7 +177,7 @@
       ((null? (vars layer)) '())
       ((and (eq? varname (firstvarname layer)) (null? (firstvarvalue layer))) (error 'Variable_not_initialized))
       ((eq? varname (firstvarname layer)) (firstvarvalue layer))
-      (else (M_value_var varname (trimlayer layer))))))
+      (else (M_value_var_layer varname (trimlayer layer))))))
 
 ;trims the first var entry from the layer
 (define trimlayer
@@ -266,7 +266,7 @@
 (define M_state_assign
   (lambda (assignment state)
     (if (isdeclared? (varName assignment) state)
-      (updatevar (varName assignment) (M_value (expr assignment) state))
+      (updatevar (varName assignment) (M_value (expr assignment) state) state)
       (error 'Variable_not_declared))))
 
 ; misc definitions for M_state_assign
@@ -277,7 +277,6 @@
   (lambda (l)
     (caddr l)))
 
-;while loop should not know anything about your layers
 (define M_state_while
   (lambda (while state)
     (call/cc (lambda (break)
@@ -300,7 +299,7 @@
 ;M_state_block
 (define M_state_block
   (lambda (stmt state)
-    (removeLayer ((M_state (cdr smtmt) (addLayer state))))))
+    (removeLayer ((evaluate (cdr stmt) (addLayer state))))))
 
 ;M_state_break
 (define M_state_break
