@@ -168,7 +168,7 @@
           (if (null? varval)
               (M_value_var varname (removeLayer state))
               varval))
-         (M_value_var_layer varname state))))
+         (M_value_var_layer varname (topLayer) state))))
 
 ;returns the value assigned to varname in a layer
 (define M_value_var_layer
@@ -177,7 +177,7 @@
       ((null? (vars layer)) '())
       ((and (eq? varname (firstvarname layer)) (null? (firstvarvalue layer))) (error 'Variable_not_initialized))
       ((eq? varname (firstvarname layer)) (firstvarvalue layer))
-      (else (M_value_var varname (trimlayer layer))))))
+      (else (M_value_var_layer varname (trimlayer layer))))))
 
 ;trims the first var entry from the layer
 (define trimlayer
