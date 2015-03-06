@@ -103,7 +103,7 @@
 ;addvar adds a var and it's initial value ('() if undefined) to state at the top level
 (define addvar
   (lambda (var val state)
-    (cons (cons var (vars (topLayer state))) (cons (cons val (vals (topLayer state))) '()))))
+    (cons (cons (cons var (vars (topLayer state))) (cons (cons val (vals (topLayer state))) '())) (cdr state))))
 
 (define addvarlayer
   (lambda (var val layer)
