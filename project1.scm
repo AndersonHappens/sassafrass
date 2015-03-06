@@ -34,7 +34,7 @@
   (lambda (state)
     (cdr state)))
 
-;topLayer
+;returns the top layer of a state
 (define topLayer
   (lambda (state)
     (car state)))
@@ -167,8 +167,8 @@
         ((lambda (varval)
           (if (null? varval)
               (M_value_var varname (removeLayer state))
-              (varval)))
-         (M_value_var_layer varname (topLayer state)))))
+              varval))
+         (M_value_var_layer varname state))))
 
 ;returns the value assigned to varname in a layer
 (define M_value_var_layer
@@ -277,7 +277,6 @@
   (lambda (l)
     (caddr l)))
 
-;while loop should not know anything about your layers
 (define M_state_while
   (lambda (while state)
     (call/cc (lambda (break)
@@ -290,17 +289,17 @@
 
 ;misc while helper functions
 (define condition
-  (lambda while
+  (lambda (while)
     (cadr while)))
 
 (define body
-  (lambda while
+  (lambda (while)
     (caddr while)))
 
 ;M_state_block
 (define M_state_block
   (lambda (stmt state)
-    (removeLayer ((M_state (cdr smtmt) (addLayer state))))))
+    (removeLayer ((M_state (cdr stmt) (addLayer state))))))
 
 ;M_state_break
 (define M_state_break
