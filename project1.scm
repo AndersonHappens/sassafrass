@@ -115,13 +115,15 @@
 (define updatevar
   (lambda (var val state)
     (updatevar2 var val state (lambda (v) v))))
+
 ; helper method for updating a variable
 (define updatevar2
   (lambda (var val state return)
     (if (isdeclaredinlayer? var (topLayer state))
         (return (cons (updatevarlayer var val (topLayer state)) (removeLayer state)))
         (updatevar2 var val (removeLayer state) (lambda (v) (return (cons (topLayer state) v)))))))
-; updates a variable in a specific layer
+
+; helper method to update a variable in a specific layer
 (define updatevarlayer
   (lambda (var val layer)
     (addvarlayer var val (removevarlayer var layer))))
@@ -172,7 +174,7 @@
               varval))
          (M_value_var_layer varname (topLayer state)))))
 
-;returns the value assigned to varname in a layer
+;helper method for M_value_var, returns the value assigned to varname in a layer, or null if the variable does not exist in that layer
 (define M_value_var_layer
   (lambda (varname layer)
     (cond
@@ -304,11 +306,15 @@
     (removeLayer (evaluate (cdr stmt) (addLayer state) (lambda (v) (continue (removeLayer v))) (lambda (v) (break (removeLayer v)))))))
 
 ;M_state_break, handles break
+; the break that is passed in is a continuation function from the call/cc on line 287 int M_state_while,
+; modified by M_state_block calls so that it removes the layer(s) before triggering the continuation.
 (define M_state_break
   (lambda (state break)
     (break state)))
 
 ;M_state_continue, handles continue
+; the continue that is passed in is a continuation function from the call/cc on line 290 in M_state_while,
+; modified by M_state_block calls so that it removes the layer(s) before triggering the continuation.
 (define M_state_continue
   (lambda (state continue)
     (continue state)))
