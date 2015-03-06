@@ -117,7 +117,7 @@
 (define updatevar2
   (lambda (var val state return)
     (if (isdeclaredinlayer? var (topLayer state))
-        (return (cons (updatevarlayer var val (toplayer state)) (removeLayer state)))
+        (return (cons (updatevarlayer var val (topLayer state)) (removeLayer state)))
         (updatevar var val (removeLayer state) (lambda (v) (cons (topLayer state) v))))))
 
 (define updatevarlayer
@@ -168,7 +168,7 @@
           (if (null? varval)
               (M_value_var varname (removeLayer state))
               varval))
-         (M_value_var_layer varname (topLayer) state))))
+         (M_value_var_layer varname (topLayer state)))))
 
 ;returns the value assigned to varname in a layer
 (define M_value_var_layer
@@ -266,7 +266,7 @@
 (define M_state_assign
   (lambda (assignment state)
     (if (isdeclared? (varName assignment) state)
-      (updatevar (varName assignment) (M_value (expr assignment) state))
+      (updatevar (varName assignment) (M_value (expr assignment) state) state)
       (error 'Variable_not_declared))))
 
 ; misc definitions for M_state_assign
@@ -299,7 +299,7 @@
 ;M_state_block
 (define M_state_block
   (lambda (stmt state)
-    (removeLayer ((M_state (cdr stmt) (addLayer state))))))
+    (removeLayer ((evaluate (cdr stmt) (addLayer state))))))
 
 ;M_state_break
 (define M_state_break
