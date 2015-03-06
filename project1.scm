@@ -65,8 +65,8 @@
         ((eq? stmttype 'if) (M_state_if stmt state))
         ((eq? stmttype 'while) (M_state_while stmt state))
         ((eq? stmttype 'begin) (M_state_block stmt state))
-        ((eq? stmttype 'break) (M_state_break stmt state))
-        ((eq? stmttype 'continue) (M_state_continue stmt state))
+        ((eq? stmttype 'break) (M_state_break state))
+        ((eq? stmttype 'continue) (M_state_continue state))
         (else (error 'Invalid_stmt_type))))
       stmt state (stmttype stmt))))
 
@@ -77,13 +77,13 @@
 
 ;M_state_break
 (define M_state_break
-  (lambda ()
-    break))
+  (lambda (state)
+    (break state)))
 
 ;M_state_continue
 (define M_state_continue
-  (lambda ()
-    continue))
+  (lambda (state)
+    (continue state)))
 
 ;topLayer
 (define topLayer
@@ -251,16 +251,13 @@
   (lambda (l)
     (caddr l)))
 
-;braces can go anywhere! not just in loops and conditions... :P
-;only thing that should know about layers
-(define Mstate
-  (lambda (stmtlist state)
-    (Remove-Layer((Mstate stmtlist) (Add-layer state)))))
 ;while loop should not know anything about your layers
 (define M_state_while
   (lambda (condition body state return)
     (call/cc (lambda (break)
-               (letrec ((loop (lambda (condition body state) (if (M_bool condition state) (loop condition body (Mstate body state return))
-                                                                 state))))
+               (letrec ((loop (lambda (condition body state)
+                                (if (M_bool condition state)
+                                    (loop condition body (Mstate body state return))
+                                    state))))
                  (call/cc (lambda (continue)
-                          (loop condition body state))))))))
+                            (loop condition body state))))))))
