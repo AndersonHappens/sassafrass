@@ -299,7 +299,7 @@
 ;M_state_block
 (define M_state_block
   (lambda (stmt state continue break)
-    (removeLayer (evaluate (cdr stmt) (addLayer state) continue break))))
+    (removeLayer (evaluate (cdr stmt) (addLayer state) (lambda (v) (continue (removeLayer v))) (lambda (v) (break (removeLayer v)))))))
 
 ;M_state_break
 (define M_state_break
