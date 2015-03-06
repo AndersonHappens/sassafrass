@@ -10,7 +10,8 @@
 ;parses and interprets the code in the given file
 (define interpret
   (lambda (filename)
-    (evaluate (parser filename) (newEnvironment))))
+    (evaluate (parser filename) (newEnvironment) (lambda (v) v) (lambda (v) v))))
+;lambda (v) v as placeholders for continue and break, acts as do nothing until in a loop.
 
 ;defines the newEnvironment consisting of 1 layer in a list
 (define newEnvironment
@@ -41,11 +42,11 @@
 
 ;evaluate the parse tree
 (define evaluate
-  (lambda (stmts state)
+  (lambda (stmts state continue break)
     (cond
       ((not (list? state)) state)
       ((null? stmts) state)
-      (else (evaluate (cdr stmts) (M_state (firststmt stmts) state))))))
+      (else (evaluate (cdr stmts) (M_state (firststmt stmts) state continue break) continue break)))))
 
 
 ;returns the current statement (car of the statement list)
@@ -61,17 +62,17 @@
 ;Main M_state
 ;checks type of statement, passes it down to the correct Mstate handler
 (define M_state
-  (lambda (stmt state)
+  (lambda (stmt state continue break)
     ((lambda (stmt state stmttype)
       (cond
         ((eq? stmttype 'var) (M_state_var stmt state))
         ((eq? stmttype '=) (M_state_assign stmt state))
         ((eq? stmttype 'return) (M_state_return stmt state))
-        ((eq? stmttype 'if) (M_state_if stmt state))
+        ((eq? stmttype 'if) (M_state_if stmt state continue break))
         ((eq? stmttype 'while) (M_state_while stmt state))
-        ((eq? stmttype 'begin) (M_state_block stmt state))
-        ((eq? stmttype 'break) (M_state_break state))
-        ((eq? stmttype 'continue) (M_state_continue state))
+        ((eq? stmttype 'begin) (M_state_block stmt state continue break))
+        ((eq? stmttype 'break) (M_state_break state break))
+        ((eq? stmttype 'continue) (M_state_continue state continue))
         (else (error 'Invalid_stmt_type))))
       stmt state (stmttype stmt))))
 
@@ -239,11 +240,11 @@
 
 ;M_state_if
 (define M_state_if
-  (lambda (ifBlock state)
+  (lambda (ifBlock state continue break)
     (cond
-      ((M_bool (condition ifBlock) state) (M_state (ifStmt ifBlock) state))
+      ((M_bool (condition ifBlock) state) (M_state (ifStmt ifBlock) state continue break))
       ((noElseStmt ifBlock) state)
-      (else (M_state (elseStmt ifBlock) state)))))
+      (else (M_state (elseStmt ifBlock) state continue break)))))
 
 ; misc definitions for M_state_if
 (define condition
@@ -283,9 +284,9 @@
                (letrec ((loop (lambda (condition body state)
                                 (call/cc (lambda (continue)
                                            (if (M_bool condition state)
-                                               (loop condition body (M_state body state))
+                                               (loop condition body (M_state body state continue break))
                                                state))))))
-                              (loop (condition while) (body while) state))))))
+                 (loop (condition while) (body while) state))))))
 
 ;misc while helper functions
 (define condition
@@ -298,16 +299,16 @@
 
 ;M_state_block
 (define M_state_block
-  (lambda (stmt state)
-    (removeLayer (evaluate (cdr stmt) (addLayer state)))))
+  (lambda (stmt state continue break)
+    (removeLayer (evaluate (cdr stmt) (addLayer state) continue break))))
 
 ;M_state_break
 (define M_state_break
-  (lambda (state)
+  (lambda (state break)
     (break state)))
 
 ;M_state_continue
 (define M_state_continue
-  (lambda (state)
+  (lambda (state continue)
     (continue state)))
 
