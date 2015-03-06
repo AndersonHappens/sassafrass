@@ -12,11 +12,27 @@
   (lambda (filename)
     (evaluate (parser filename) (newEnvironment))))
 
-;defines the newEnvironment
+;defines the newEnvironment consisting of 1 layer in a list
 (define newEnvironment
+  (lambda ()
+    '((()()))
+    ))
+
+;defines a new layer
+(define newLayer
   (lambda ()
     '(()())
     ))
+
+;adds a layer to the state
+(define addLayer
+  (lambda (state)
+    (cons (newLayer) state)))
+
+;removes a layer from the state
+(define removeLayer
+  (lambda (state)
+    (cdr state)))
 
 ;evaluate the parse tree
 (define evaluate
@@ -42,14 +58,37 @@
 (define M_state
   (lambda (stmt state)
     ((lambda (stmt state stmttype)
-       
       (cond
         ((eq? stmttype 'var) (M_state_var stmt state))
         ((eq? stmttype '=) (M_state_assign stmt state))
         ((eq? stmttype 'return) (M_state_return stmt state))
         ((eq? stmttype 'if) (M_state_if stmt state))
+        ((eq? stmttype 'while) (M_state_while stmt state))
+        ((eq? stmttype 'begin) (M_state_block stmt state))
+        ((eq? stmttype 'break) (M_state_break state))
+        ((eq? stmttype 'continue) (M_state_continue state))
         (else (error 'Invalid_stmt_type))))
       stmt state (stmttype stmt))))
+
+;M_state_block
+(define M_state_block
+  (lambda (stmt state)
+    (removeLayer ((M_state (cdr smtmt) (addLayer state))))))
+
+;M_state_break
+(define M_state_break
+  (lambda (state)
+    (break state)))
+
+;M_state_continue
+(define M_state_continue
+  (lambda (state)
+    (continue state)))
+
+;topLayer
+(define topLayer
+  (lambda (state)
+    (car state)))
 
 ;M_state_var
 (define M_state_var
@@ -76,97 +115,56 @@
       'true
       'false)))
 
-;addvar adds a var and it's initial value ('() if undefined) to state at the top level
+;addvar adds a var and it's initial value ('() if undefined) to state
 (define addvar
   (lambda (var val state)
-    (cons (cons var (vars (topLayer state))) (cons (cons val (vals (topLayer state))) '()))))
-
-(define addvarlayer
-  (lambda (var val layer)
-    (cons (cons var (vars layer)) (cons (cons val (vals layer)) '()))))
-
-;updates the value of a var
-(define updatevar
-  (lambda (var val state)
-    (updatevar2 var val state (lambda (v) v))))
-
-(define updatevar2
-  (lambda (var val state return)
-    (if (isdeclaredinlayer? var (topLayer state))
-        (return (cons (updatevarlayer var val (toplayer state)) (removeLayer state)))
-        (updatevar var val (removeLayer state) (lambda (v) (cons (topLayer state) v))))))
-
-(define updatevarlayer
-  (lambda (var val layer)
-    (addvarlayer var val (removevarlayer var layer))))
+    (cons (cons var (vars state)) (cons (cons val (vals state)) '()))))
 
 (define vars
-  (lambda (layer)
-    (car layer)))
+  (lambda (state)
+    (car state)))
 (define vals
-  (lambda (layer)
-    (cadr layer)))
+  (lambda (state)
+    (cadr state)))
 
-;removevar from a layer, if present
-(define removevarlayer
-  (lambda (var layer)
+;removevar
+(define removevar
+  (lambda (var state)
     (cond
-      ((null? (car layer)) '())
-      ((eq? var (firstvarname layer)) (trimlayer layer))
-      (else (addvar (firstvarname layer) (firstvarvalue layer) (removevar var (trimlayer layer)))))))
-
-;checks if a var is declared in the state
+      ((null? (car state)) '())
+      ((eq? var (firstvarname state)) (trimstate state))
+      (else (addvar (firstvarname state) (firstvarvalue state) (removevar var (trimstate state)))))))
+       
+;checks if a var is declared in state
 (define isdeclared?
   (lambda (varname state)
-    (if (null? state)
-        #f
-        ((lambda (varval)
-          (if varval
-              varval
-              (isDeclared? varname (removeLayer state))))
-         (isdeclaredinlayer? varname (topLayer state))))))
-        
-
-;checks if a var is declared in a layer
-(define isdeclaredinlayer?
-  (lambda (varname layer)
     (cond
-      ((null? (car layer)) #f)
-      ((eq? varname (firstvarname layer)) #t)
-      (else (isdeclared? varname (trimlayer layer))))))
+      ((null? (car state)) #f)
+      ((eq? varname (firstvarname state)) #t)
+      (else (isdeclared? varname (trimstate state))))))
     
-;returns the value assigned to varname in the state
+
+;returns the value assigned to varname in state
 (define M_value_var
   (lambda (varname state)
-    (if (null? state)
-        (error 'Variable_not_declared))
-        ((lambda (varval)
-          (if (null? varval)
-              (M_value_var varname (removeLayer state))
-              (varval)))
-         (M_value_var_layer varname (topLayer state)))))
-
-;returns the value assigned to varname in a layer
-(define M_value_var_layer
-  (lambda (varname layer)
     (cond
-      ((null? (vars layer)) '())
-      ((and (eq? varname (firstvarname layer)) (null? (firstvarvalue layer))) (error 'Variable_not_initialized))
-      ((eq? varname (firstvarname layer)) (firstvarvalue layer))
-      (else (M_value_var varname (trimlayer layer))))))
+      ((null? (vars state)) (error 'Variable_not_declared))
+      ((and (eq? varname (firstvarname state)) (null? (firstvarvalue state))) (error 'Variable_not_initialized))
+      ((eq? varname (firstvarname state)) (firstvarvalue state))
+      (else (M_value_var varname (trimstate state))))))
 
-;trims the first var entry from the layer
-(define trimlayer
-  (lambda (layer)
-     (cons (cdr (car layer)) (cons (cdr (cadr layer)) '()))))
+;trims the first var entry from the state
+(define trimstate
+  (lambda (state)
+     (cons (cdr (car state)) (cons (cdr (cadr state)) '()))))
 
 (define firstvarname
-  (lambda (layer)
-    (car (car layer))))
+  (lambda (state)
+    (car (car state))))
 
 (define firstvarvalue
-  (lambda (layer)
-    (car (cadr layer))))
+  (lambda (state)
+    (car (cadr state))))
 
 ; M_value, handles +,-,*,/,% and calls M_value_var if it finds a variable
 (define M_value
@@ -242,7 +240,7 @@
 (define M_state_assign
   (lambda (assignment state)
     (if (isdeclared? (varName assignment) state)
-      (updatevar (varName assignment) (M_value (expr assignment) state))
+      (addvar (varName assignment) (M_value (expr assignment) state) (removevar (varName assignment) state))
       (error 'Variable_not_declared))))
 
 ; misc definitions for M_state_assign
@@ -253,25 +251,18 @@
   (lambda (l)
     (caddr l)))
 
-;M_state_block
-;the M_state function for blocks;
-(define M_state_block
+;braces can go anywhere! not just in loops and conditions... :P
+;only thing that should know about layers
+(define Mstate
   (lambda (stmtlist state)
-    (Remove-Layer((M_state_block stmtlist) (Add-layer state)))))
-
+    (Remove-Layer((Mstate stmtlist) (Add-layer state)))))
 ;while loop should not know anything about your layers
 (define M_state_while
-  (lambda (while state)
-    (letrec ((loop (lambda (condition body state) (if (M_bool condition state)
-                                                      (loop condition body (M_state body state))
-                                                      state))))
-      (loop (condition while) (body while) state))))
-
-;misc while helper functions
-(define condition
-  (lambda while
-    (cadr while)))
-
-(define body
-  (lambda while
-    (caddr while)))
+  (lambda (condition body state return)
+    (call/cc (lambda (break)
+               (letrec ((loop (lambda (condition body state)
+                                (if (M_bool condition state)
+                                    (loop condition body (Mstate body state return))
+                                    state))))
+                 (call/cc (lambda (continue)
+                            (loop condition body state))))))))
