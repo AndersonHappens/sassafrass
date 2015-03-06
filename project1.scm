@@ -24,6 +24,8 @@
     '(()())
     ))
 
+;SYAING THINGS BECAUSE JAKE WANTS ME TO BLAHDAH BLAHDAH BLAHDAH TAXES
+
 ;adds a layer to the state
 (define addLayer
   (lambda (state)
