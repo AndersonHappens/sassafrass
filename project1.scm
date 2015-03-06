@@ -147,7 +147,7 @@
         ((lambda (varval)
           (if varval
               varval
-              (isDeclared? varname (removeLayer state))))
+              (isdeclared? varname (removeLayer state))))
          (isdeclaredinlayer? varname (topLayer state))))))
         
 
@@ -282,19 +282,19 @@
   (lambda (while state)
     (call/cc (lambda (break)
                (letrec ((loop (lambda (condition body state)
-                                (if (M_bool condition state)
-                                    (loop condition body (M_state body state))
-                                    state))))
-                 (call/cc (lambda (continue)
-                            (loop (condition while) (body while) state))))))))
+                                (call/cc (lambda (continue)
+                                           (if (M_bool condition state)
+                                               (loop condition body (M_state body state))
+                                               state))))))
+                              (loop (condition while) (body while) state))))))
 
 ;misc while helper functions
 (define condition
-  (lambda while
+  (lambda (while)
     (cadr while)))
 
 (define body
-  (lambda while
+  (lambda (while)
     (caddr while)))
 
 ;M_state_block
