@@ -82,8 +82,8 @@
 (define M_state_var
   (lambda (stmt state)
     (cond
-      ((and (isdeclared? (cadr stmt) state) (null? (cddr stmt))) state)
-      ((isdeclared? (cadr stmt) state) (error 'Redefining_Variable))
+      ((and (isdeclaredinlayer? (cadr stmt) (topLayer state)) (null? (cddr stmt))) state)
+      ((isdeclaredinlayer? (cadr stmt) (topLayer state)) (error 'Redefining_Variable))
       ((null? (cddr stmt)) (addvar (cadr stmt) '() state))
       (else (addvar (cadr stmt) (M_value (caddr stmt) state) state)))))
 
@@ -170,6 +170,8 @@
 (define M_value_var
   (lambda (varname state)
     (if (null? state)
+        (display varname))
+    (if (null? state)
         (error 'Variable/function_not_declared))
         ((lambda (varval)
           (if (null? varval)
@@ -204,6 +206,8 @@
   (lambda (expression state)
     (cond
       ((number? expression) expression)
+      ((or (eq? expression '#t) (eq? expression '#f)) (M_bool expression state))
+      ((or (eq? expression 'true) (eq? expression 'false)) (M_bool expression state))
       ((not (list? expression)) (M_value_var expression state))
       ((eq? '+ (operator expression)) (+ (M_value (lOperand expression) state) (M_value (rOperand expression) state)))
       ((eq? '/ (operator expression)) (quotient (M_value (lOperand expression) state) (M_value (rOperand expression) state)))
@@ -218,6 +222,8 @@
 (define M_bool
   (lambda (expression state)
     (cond
+      ((eq? expression '#t) #t)
+      ((eq? expression '#f) #f)
       ((eq? 'true expression) #t)
       ((eq? 'false expression) #f)
       ((boolean? expression) expression)
