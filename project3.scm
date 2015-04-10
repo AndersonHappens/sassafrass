@@ -10,7 +10,7 @@
 ;parses and interprets the code in the given file
 (define interpret
   (lambda (filename)
-    (evaluate (append (parser filename) '((return (funcall main '())))) (newEnvironment) (lambda (v) v) (lambda (v) v))))
+    (evaluate (append (parser filename) '((return (funcall main '())))) (newEnvironment) (lambda (v) v) (lambda (v) v) (lambda (v) v))))
 ;lambda (v) v as placeholders for continue and break, acts as do nothing until in a loop.
 
 ;defines the newEnvironment consisting of 1 layer in a list
@@ -42,11 +42,11 @@
 
 ;evaluate the parse tree
 (define evaluate
-  (lambda (stmts state continue break)
+  (lambda (stmts state continue break return)
     (cond
       ((not (list? state)) state)
       ((null? stmts) state)
-      (else (evaluate (cdr stmts) (M_state (firststmt stmts) state continue break) continue break)))))
+      (else (evaluate (cdr stmts) (M_state (firststmt stmts) state continue break return) continue break return)))))
 
 
 ;returns the current statement (car of the statement list)
@@ -62,15 +62,15 @@
 ;Main M_state
 ;checks type of statement, passes it down to the correct Mstate handler
 (define M_state
-  (lambda (stmt state continue break)
+  (lambda (stmt state continue break return)
     ((lambda (stmt state stmttype)
       (cond
         ((eq? stmttype 'var) (M_state_var stmt state))
         ((eq? stmttype '=) (M_state_assign stmt state))
-        ((eq? stmttype 'return) (M_state_return stmt state))
-        ((eq? stmttype 'if) (M_state_if stmt state continue break))
-        ((eq? stmttype 'while) (M_state_while stmt state))
-        ((eq? stmttype 'begin) (M_state_block stmt state continue break))
+        ((eq? stmttype 'return) (M_state_return stmt state return))
+        ((eq? stmttype 'if) (M_state_if stmt state continue break return))
+        ((eq? stmttype 'while) (M_state_while stmt state return))
+        ((eq? stmttype 'begin) (M_state_block stmt state continue break return))
         ((eq? stmttype 'break) (M_state_break state break))
         ((eq? stmttype 'continue) (M_state_continue state continue))
         ((eq? stmttype 'function) (M_state_function_declaration stmt state))
@@ -90,14 +90,12 @@
 ;M_state_return
 ;checks if it's a boolean statement or number statement and returns the correct evaluation of the statement
 (define M_state_return
-  (lambda (exp s)
-    (newline)
-    (display "returning ") (display exp)
-    (cond
-      ((null? exp) '())
-      ((number? (M_value (cadr exp) s)) (M_value (cadr exp) s))
-      ((boolean? (M_bool (cadr exp) s)) (boolReturnHelper (M_bool (car (cdr exp)) s)))
-      (else (M_value (cadr exp) s)))))
+  (lambda (exp s return)
+    (return (cond
+              ((null? exp) '())
+              ((number? (M_value (cadr exp) s)) (M_value (cadr exp) s))
+              ((boolean? (M_bool (cadr exp) s)) (boolReturnHelper (M_bool (car (cdr exp)) s)))
+              (else (M_value (cadr exp) s))))))
 
 ; handles returning true and false instead of #t and #f
 (define boolReturnHelper
@@ -174,9 +172,6 @@
     (if (null? state)
         (error 'Variable/function_not_declared))
         ((lambda (varval)
-           (newline)
-           (display varname)
-           (display state)
           (if (null? varval)
               (M_value_var varname (removeLayer state))
               varval))
@@ -253,11 +248,11 @@
 
 ;M_state_if
 (define M_state_if
-  (lambda (ifBlock state continue break)
+  (lambda (ifBlock state continue break return)
     (cond
-      ((M_bool (condition ifBlock) state) (M_state (ifStmt ifBlock) state continue break))
+      ((M_bool (condition ifBlock) state) (M_state (ifStmt ifBlock) state continue break return))
       ((noElseStmt ifBlock) state)
-      (else (M_state (elseStmt ifBlock) state continue break)))))
+      (else (M_state (elseStmt ifBlock) state continue break return)))))
 
 ; misc definitions for M_state_if
 (define condition
@@ -293,11 +288,11 @@
 
 ;M_State_while, handles the while loop with continues and breaks.
 (define M_state_while
-  (lambda (while state)
+  (lambda (while state return)
     (call/cc (lambda (break)
                (letrec ((loop (lambda (condition body state)
                                 (if (M_bool condition state)
-                                    (loop condition body (call/cc (lambda (continue) (M_state body state continue break))))
+                                    (loop condition body (call/cc (lambda (continue) (M_state body state continue break return))))
                                     state))))
                  (loop (condition while) (body while) state))))))
 
@@ -312,8 +307,8 @@
 
 ;M_state_block, handles block statements
 (define M_state_block
-  (lambda (stmt state continue break)
-    (removeLayer (evaluate (cdr stmt) (addLayer state) (lambda (v) (continue (removeLayer v))) (lambda (v) (break (removeLayer v)))))))
+  (lambda (stmt state continue break return)
+    (removeLayer (evaluate (cdr stmt) (addLayer state) (lambda (v) (continue (removeLayer v))) (lambda (v) (break (removeLayer v))) return))))
 
 ;M_state_break, handles break
 ; the break that is passed in is a continuation function from the call/cc on line 287 int M_state_while,
@@ -343,7 +338,6 @@
       (else   (pruneLayer name (trimlayer layer))))))
 (define addParams
   (lambda (names values state)
-    (if (null? names) (begin(newline)(display "state with params")(display state)))
     (cond
       ((null? names) state)
       (else (addParams (cdr names) (cdr values) (addvar (car names) (M_value (car values) state) state))))))
@@ -389,10 +383,7 @@
 ; Returns the value of a function call
 (define M_value_function_call
   (lambda (funcCall state)
-    (newline)
-    (display "this next thing is me")
-    (newline)
-    (evaluate (func_code_list (M_value_var (func_name funcCall) state)) (create_func_envi (func_name funcCall) (param_values (func_param_values funcCall) state) state) (lambda (v) v) (lambda (v) v))))
+    (call/cc (lambda (return) (evaluate (func_code_list (M_value_var (func_name funcCall) state)) (create_func_envi (func_name funcCall) (param_values (func_param_values funcCall) state) state) (lambda (v) v) (lambda (v) v) return)))))
 
 ; param_values
 ; calculates the parameter values for function calls
@@ -406,4 +397,4 @@
 ; Calls a function to change the state
 (define M_state_function_call
   (lambda (funcCall state)
-    (evaluate (func_code (M_value_var (func_name funcCall) state)) (create_func_eniv (func_name funcCall) (param_values (func_param_values funcCall) state) state) (lambda (v) v) (lambda (v) v))))
+    (evaluate (func_code (M_value_var (func_name funcCall) state)) (create_func_eniv (func_name funcCall) (param_values (func_param_values funcCall) state) state) (lambda (v) v) (lambda (v) v) (lambda (v) state))))
