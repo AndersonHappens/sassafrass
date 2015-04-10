@@ -92,6 +92,7 @@
 (define M_state_return
   (lambda (exp s)
     (cond
+      ((null? exp) '())
       ((number? (M_value (cadr exp) s)) (M_value (car (cdr exp)) s))
       ((boolean? (M_bool (cadr exp) s)) (boolReturnHelper (M_bool (car (cdr exp)) s)))
       (else (M_value (cadr exp) s)))))
@@ -171,6 +172,9 @@
     (if (null? state)
         (error 'Variable/function_not_declared))
         ((lambda (varval)
+           (newline)
+           (display varname)
+           (display state)
           (if (null? varval)
               (M_value_var varname (removeLayer state))
               varval))
@@ -337,6 +341,7 @@
       (else   (pruneLayer name (trimlayer layer))))))
 (define addParams
   (lambda (names values state)
+    (if (null? names) (begin(newline)(display "state with params")(display state)))
     (cond
       ((null? names) state)
       (else (addParams (cdr names) (cdr values) (addvar (car names) (M_value (car values) state) state))))))
@@ -382,6 +387,8 @@
 ; Returns the value of a function call
 (define M_value_function_call
   (lambda (funcCall state)
+    (newline)
+    (display "i was called")
     (evaluate (func_code_list (M_value_var (func_name funcCall) state)) (create_func_envi (func_name funcCall) (param_values (func_param_values funcCall) state) state) (lambda (v) v) (lambda (v) v))))
 
 ; param_values
@@ -396,4 +403,4 @@
 ; Calls a function to change the state
 (define M_state_function_call
   (lambda (funcCall state)
-    (evaluate (func_code (M_value_var (func_name funcCall))) (create_func_eniv (func_name funcCall) (param_values (func_param_values funcCall) state) state) (lambda (v) v) (lambda (v) v))))
+    (evaluate (func_code (M_value_var (func_name funcCall) state)) (create_func_eniv (func_name funcCall) (param_values (func_param_values funcCall) state) state) (lambda (v) v) (lambda (v) v))))
