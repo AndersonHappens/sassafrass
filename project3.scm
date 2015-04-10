@@ -319,3 +319,16 @@
   (lambda (state continue)
     (continue state)))
 
+; create_func_envi
+(define create_func_envi
+  (lambda (name state)
+    (cond
+      ((null? state) '())
+      ((null? (pruneLayer name (car state))) (create_func_envi name (cdr state)))
+      (else (cons (pruneLayer name (car state)) (cdr state))))))
+(define pruneLayer
+  (lambda (name layer)
+    (cond
+      ((null? (vars layer)) '())
+      ((eq? name (firstvarname layer)) layer)
+      (else (pruneLayer (name (trimlayer layer)))))))
