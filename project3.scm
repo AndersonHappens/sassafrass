@@ -231,6 +231,7 @@
       ((eq? '&& (operator expression)) (and (M_bool (lOperand expression) state) (M_bool (rOperand expression) state)))
       ((eq? '|| (operator expression)) (or (M_bool (lOperand expression) state) (M_bool (rOperand expression) state)))
       ((eq? '! (operator expression)) (not (M_bool (lOperand expression) state)))
+      ((eq? 'funcall (operator expression)) (M_value_function_call (expression)))
       (else '(not_a_bool)))))
           
 ; misc definitions for M_value, M_bool
@@ -324,18 +325,23 @@
 
 ; create_func_envi
 (define create_func_envi
-  (lambda (name state)
+  (lambda (name values state)
     (cond
       ((null? state) '())
       ((null? (pruneLayer name (car state))) (create_func_envi name (cdr state)))
-      (else (cons (pruneLayer name (car state)) (cdr state))))))
+      (else (addParams (func_params (M_value_var name)) values (addLayer (cons (pruneLayer name (car state)) (cdr state))))))))
 (define pruneLayer
   (lambda (name layer)
     (cond
       ((null? (vars layer)) '())
       ((eq? name (firstvarname layer)) layer)
-      (else   (pruneLayer (name (trimlayer layer)))))))   
-
+      (else   (pruneLayer (name (trimlayer layer)))))))
+(define addParams
+  (lambda (names values state)
+    (cond
+      ((null? names) state)
+      (else (addParams (cdr names) (cdr values) (addvar (car names) (car values) state))))))
+        
 ; M_state_function_declaration
 ; creates the function closure and adds it to the state
 (define M_state_function_declaration
@@ -370,5 +376,7 @@
     (evaluate (func_code (M_value_var (func_name funcCall))) (create_func_eniv (func_name funcCall) (func_param_values funcCall) state) (lambda (v) v) (lambda (v) v))))
 
 ; M_state_function_call
-; Calls 
-
+; Calls a function to change the state
+(define M_value_function_call
+  (lambda funcCall
+    (evaluate (func_code (M_value_var (func_name funcCall))) (create_func_eniv (func_name funcCall) (func_param_values funcCall) state) (lambda (v) v) (lambda (v) v))))
