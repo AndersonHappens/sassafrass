@@ -11,7 +11,7 @@
 (define interpret
   (lambda (filename)
     (display (append (parser filename) '((return (funcall main)))))
-    (evaluate (append (parser filename) '((return (funcall main)))) (newEnvironment) (lambda (v) v) (lambda (v) v))))
+    (evaluate (append (parser filename) '((return (funcall main '())))) (newEnvironment) (lambda (v) v) (lambda (v) v))))
 ;lambda (v) v as placeholders for continue and break, acts as do nothing until in a loop.
 
 ;defines the newEnvironment consisting of 1 layer in a list
@@ -94,8 +94,8 @@
 (define M_state_return
   (lambda (exp s)
     (cond
-      ((boolean? (M_bool (cadr exp) s)) (boolReturnHelper (M_bool (car (cdr exp)) s)))
       ((number? (M_value (cadr exp) s)) (M_value (car (cdr exp)) s))
+      ((boolean? (M_bool (cadr exp) s)) (boolReturnHelper (M_bool (car (cdr exp)) s)))
       (else (M_value (cadr exp) s)))))
 
 ; handles returning true and false instead of #t and #f
@@ -233,7 +233,7 @@
       ((eq? '&& (operator expression)) (and (M_bool (lOperand expression) state) (M_bool (rOperand expression) state)))
       ((eq? '|| (operator expression)) (or (M_bool (lOperand expression) state) (M_bool (rOperand expression) state)))
       ((eq? '! (operator expression)) (not (M_bool (lOperand expression) state)))
-      ((eq? 'funcall (operator expression)) (M_value_function_call (expression)))
+      ((eq? 'funcall (operator expression)) (M_value_function_call expression state))
       (else '(not_a_bool)))))
           
 ; misc definitions for M_value, M_bool
@@ -329,7 +329,7 @@
 (define create_func_envi
   (lambda (name values state)
     (if (isdeclaredinlayer? name (car state))
-        (addParams (func_params (M_value_var name)) values (addLayer (cons (pruneLayer name (car state)) (cdr state))))
+        (addParams (func_param_values (M_value_var name state)) values (addLayer (cons (pruneLayer name (car state)) (cdr state))))
         (create_func_envi name (cdr state)))))
 (define pruneLayer
   (lambda (name layer)
@@ -340,17 +340,20 @@
 (define addParams
   (lambda (names values state)
     (cond
+      (display names)
+      (newline)
+      (display values)
       ((null? names) state)
-      (else (addParams (cdr names) (cdr values) (addvar (car names) (M_value (car values)) state))))))
+      (else (addParams (cdr names) (cdr values) (addvar (car names) (M_value (car values) state) state))))))
         
 ; M_state_function_declaration
 ; creates the function closure and adds it to the state
 (define M_state_function_declaration
   (lambda (funcDef state)
     (newline)
-    (display funcDef)
+    (display (append (list (func_params funcDef)) (list (func_code funcDef))))
     (newline)
-    (addvar (func_name funcDef) (append (func_params funcDef) (func_code funcDef)) state)))
+    (addvar (func_name funcDef) (append (list (func_params funcDef)) (list (func_code funcDef))) state)))
 
 ;helper functions for functions
 ;both def and call
@@ -376,14 +379,19 @@
   (lambda (funcCall)
     (cddr funcCall)))
 
+;closure only
+(define func_code_list
+  (lambda (funcClosure)
+    (cadr funcClosure)))
+
 ; M_value_function_call
 ; Returns the value of a function call
 (define M_value_function_call
-  (lambda (funcCall)
-    (evaluate (func_code (M_value_var (func_name funcCall))) (create_func_eniv (func_name funcCall) (func_param_values funcCall) state) (lambda (v) v) (lambda (v) v))))
+  (lambda (funcCall state)
+    (evaluate (func_code_list (M_value_var (func_name funcCall) state)) (create_func_envi (func_name funcCall) (func_param_values funcCall) state) (lambda (v) v) (lambda (v) v))))
 
 ; M_state_function_call
 ; Calls a function to change the state
-(define M_value_function_call
-  (lambda (funcCall)
+(define M_state_function_call
+  (lambda (funcCall state)
     (evaluate (func_code (M_value_var (func_name funcCall))) (create_func_eniv (func_name funcCall) (func_param_values funcCall) state) (lambda (v) v) (lambda (v) v))))
