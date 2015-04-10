@@ -43,6 +43,10 @@
 ;evaluate the parse tree
 (define evaluate
   (lambda (stmts state continue break return)
+    ;(display stmts)
+    ;(newline)
+    ;(display state)
+    ;(newline)
     (cond
       ((not (list? state)) state)
       ((null? stmts) state)
@@ -91,11 +95,21 @@
 ;checks if it's a boolean statement or number statement and returns the correct evaluation of the statement
 (define M_state_return
   (lambda (exp s return)
+    ;(newline)
+    ;(display "return: ")
+    ;(display exp)
+    ;(newline)
+    ;(display s)
+    ;(newline)
     (return (cond
               ((null? exp) '())
-              ((number? (M_value (cadr exp) s)) (M_value (cadr exp) s))
-              ((boolean? (M_bool (cadr exp) s)) (boolReturnHelper (M_bool (car (cdr exp)) s)))
-              (else (M_value (cadr exp) s))))))
+              (else ((lambda (v)
+                       ;(display v)
+                       ;(newline)
+                       (if (boolean? v)
+                           (boolReturnHelper v)
+                           v))
+                     (M_value (cadr exp) s)))))))
 
 ; handles returning true and false instead of #t and #f
 (define boolReturnHelper
