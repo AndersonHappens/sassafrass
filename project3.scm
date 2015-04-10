@@ -10,7 +10,8 @@
 ;parses and interprets the code in the given file
 (define interpret
   (lambda (filename)
-    (evaluate (parser filename) (newEnvironment) (lambda (v) v) (lambda (v) v))))
+    (display (append (parser filename) '((return (funcall main)))))
+    (evaluate (append (parser filename) '((return (funcall main)))) (newEnvironment) (lambda (v) v) (lambda (v) v))))
 ;lambda (v) v as placeholders for continue and break, acts as do nothing until in a loop.
 
 ;defines the newEnvironment consisting of 1 layer in a list
@@ -75,7 +76,7 @@
         ((eq? stmttype 'continue) (M_state_continue state continue))
         ((eq? stmttype 'function) (M_state_function_declaration stmt state))
         ((eq? stmttype 'funcall) (M_state_function_call stmt state))
-        (else (error 'Invalid_stmt_type))))
+        (else (error 'Invalid_stmt_type stmt))))
       stmt state (stmttype stmt))))
 
 ;M_state_var
@@ -169,7 +170,7 @@
 (define M_value_var
   (lambda (varname state)
     (if (null? state)
-        (error 'Variable_not_declared))
+        (error 'Variable/function_not_declared))
         ((lambda (varval)
           (if (null? varval)
               (M_value_var varname (removeLayer state))
@@ -326,10 +327,9 @@
 ; create_func_envi
 (define create_func_envi
   (lambda (name values state)
-    (cond
-      ((null? state) '())
-      ((null? (pruneLayer name (car state))) (create_func_envi name (cdr state)))
-      (else (addParams (func_params (M_value_var name)) values (addLayer (cons (pruneLayer name (car state)) (cdr state))))))))
+    (if (isdeclaredinlayer? name (car state))
+        (addParams (func_params (M_value_var name)) values (addLayer (cons (pruneLayer name (car state)) (cdr state))))
+        (create_func_envi name (cdr state)))))
 (define pruneLayer
   (lambda (name layer)
     (cond
@@ -340,12 +340,12 @@
   (lambda (names values state)
     (cond
       ((null? names) state)
-      (else (addParams (cdr names) (cdr values) (addvar (car names) (car values) state))))))
+      (else (addParams (cdr names) (cdr values) (addvar (car names) (M_value (car values)) state))))))
         
 ; M_state_function_declaration
 ; creates the function closure and adds it to the state
 (define M_state_function_declaration
-  (lambda (funcdef state)
+  (lambda (funcDef state)
     (addvar (func_name funcDef) (append (func_params funcDef) (func_code funcDef) state))))
 
 ;helper functions for functions
