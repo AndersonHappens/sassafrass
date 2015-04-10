@@ -1,9 +1,9 @@
-; A simple parser for a Java-ish language
-; EECS 345: Programming Language Concepts
+; A simple parser for a Java/C-ish language minus the objects
+; EECS 345: Programming Languages Concepts
 ;
 ; A recursive descent parser and a lexical analyzer for simple Java statements.
 ; The language allows assignments, all mathematical expressions, if statements,
-; while statement with break and continue, and blocks.
+; while statements (including break and continue), blocks, and functions.
 ;
 ; To call the parser, use:
 ;     (parser filename)
@@ -28,8 +28,62 @@
        '()
        (begin
          (unget-next-symbol)
-         (let ((parsetree (statement-parse)))
+         (let ((parsetree (top-level-parse)))
            (cons parsetree (program-parse)))))))
+
+; parse the top level of the program.  The top level is a function definition (an identifier followed by a left
+; parenthesis) or is an assignment statement.
+
+(define top-level-parse
+  (lambda ()
+    (let ((firstsymbol (get-next-symbol)))
+      (cond
+        ((eq? (car firstsymbol) 'function) (function-parse))
+        ((eq? (car firstsymbol) 'var)
+            (let ((parse-statement '()))
+              (begin 
+                (set! parse-statement (declare-parse))
+                (if (eq? (car (get-next-symbol)) 'SEMICOLON)
+                    parse-statement
+                    (error 'parser "Missing semicolon")))))
+        (else (error 'parser "Illegal start of top level statement"))))))
+
+; parse a function. A function is the name, followed by a formal parameter list, 
+; followed by the body nested in braces
+
+(define function-parse
+  (lambda ()
+    (let ((name (get-next-symbol)))
+       (if (and (eq? (car name) 'ID) (eq? (car (get-next-symbol)) 'LEFTPAREN))
+           (let ((paramlist (get-formalparameter-list)))
+              (if (not (eq? (car (get-next-symbol)) 'LEFTBRACE))
+                  (error 'parser "Missing left brace")
+                  (list 'function (cdr name) paramlist (compound-statement-parse))))
+           (error "Illegal start of function definition")))))
+
+; parse the formal parameter list.  The list is a sequence of identifiers separated by commas
+
+(define get-formalparameter-list
+  (lambda ()
+    (let ((nextsymbol (get-next-symbol)))
+      (cond
+        ((eq? (car nextsymbol) 'RIGHTPAREN) '())
+        ((eq? (car nextsymbol) 'ID)
+          (let ((separator (car (get-next-symbol))))
+            (cond
+              ((eq? separator 'COMMA) (cons (cdr nextsymbol) (get-formalparameter-list)))
+              ((eq? separator 'RIGHTPAREN) (list (cdr nextsymbol)))
+              (else (error 'parser "Missing comma")))))
+        ((and (eq? (car nextsymbol) 'BINARY-OP) (eq? (cdr nextsymbol) '&))
+	   (let* ((id (get-next-symbol))
+                  (separator (car (get-next-symbol))))
+             (if (eq? (car id) 'ID)
+                 (cond
+                   ((eq? separator 'COMMA) (cons '& (cons (cdr id) (get-formalparameter-list))))
+                   ((eq? separator 'RIGHTPAREN) (list '& (cdr id)))
+                   (else (error 'parser "Missing comma")))
+                 (error 'parser "Missing identifier after reference operator"))))
+        (else (error 'parser "Illegal function parameter, missing right parenthesis?"))))))
 
 ; parse a statement that can be an if-statement, a while-statement, or a compound statement
 ; and if none of the above, it is a simple statement
@@ -40,6 +94,7 @@
       (cond
         ((eq? nextsymbol 'if) (if-parse))
         ((eq? nextsymbol 'while) (while-parse))
+        ((eq? nextsymbol 'function) (function-parse))
         ((eq? nextsymbol 'LEFTBRACE) (cons 'begin (compound-statement-parse)))
         (else (begin
                 (unget-next-symbol)
@@ -56,7 +111,8 @@
               ((eq? (car nextsymbol) 'var) (set! parse-statement (declare-parse)))
               ((eq? (car nextsymbol) 'break) (set! parse-statement (list 'break)))
               ((eq? (car nextsymbol) 'continue) (set! parse-statement (list 'continue)))
-              (else (begin (unget-next-symbol) (set! parse-statement (assign-parse)))))
+              ((eq? (car nextsymbol) 'ID) (set! parse-statement (id-parse nextsymbol)))
+              (else (set! parse-statement (assign-parse nextsymbol))))
          (if (eq? (car (get-next-symbol)) 'SEMICOLON)
              parse-statement
              (error 'parser "Missing semicolon"))))))
@@ -104,27 +160,46 @@
               (error 'parser "Missing closing parenthesis")
               (list 'while condition (statement-parse)))))))
 
-; parse a condition: a value followed by a comparison operator followed by a value.
+; parse an identifier.  It could be a function call or the start of an assignment statement
 
-(define cond-parse
+(define id-parse
+  (lambda (firstsymbol)
+    (if (not (eq? (car firstsymbol) 'ID))
+        (error 'parser "Illegal start of statement")
+        (let ((secondsymbol (get-next-symbol)))
+          (if (eq? (car secondsymbol) 'LEFTPAREN)
+              (funcall-parse (cdr firstsymbol))
+              (begin
+                (unget-next-symbol)
+                (assign-parse firstsymbol)))))))
+
+; parse a function call: an identifier followed by a parameter list
+
+(define funcall-parse
+  (lambda (name)
+    (cons 'funcall (cons name (get-actualparameter-list)))))
+
+; parse a parameter list: a list with an arbitrary number of identifiers separated by commas
+
+(define get-actualparameter-list
   (lambda ()
-     (let* ((firstoperand (value-parse))
-	    (op (get-next-symbol)))
-       (if (and (eq? (car op) 'BINARY-OP) 
-                (or (eq? (cdr op) '==) 
-                    (eq? (cdr op) '<)
-                    (eq? (cdr op) '>)
-                    (eq? (cdr op) '<=)
-                    (eq? (cdr op) '>=)
-                    (eq? (cdr op) '!=)))
-	  (list (cdr op) firstoperand (value-parse))
-          (error 'parser "Unknown comparison operator")))))
+    (let ((nextsymbol (get-next-symbol)))
+      (if (eq? (car nextsymbol) 'RIGHTPAREN)
+          '()
+          (begin
+            (unget-next-symbol)
+            (let* ((parameter (value-parse))
+                   (separator (car (get-next-symbol))))
+              (cond
+                ((eq? separator 'COMMA) (cons parameter (get-actualparameter-list)))
+                ((eq? separator 'RIGHTPAREN) (list parameter))
+                (else (error 'parser "Missing comma")))))))))
 
 ; parse a variable declaration: var then left-hand-side with optional = followed by a value
 
 (define declare-parse
   (lambda ()
-    (let* ((lhs (lhs-parse))
+    (let* ((lhs (lhs-parse (get-next-symbol)))
            (op (get-next-symbol)))
       (if (and (eq? (car op) 'BINARY-OP) (eq? (cdr op) '=))
           (append (cons 'var lhs) (list (value-parse)))
@@ -136,8 +211,8 @@
 ; parse an assignment statement: a left-hand-side followed by an = followed by a value
 
 (define assign-parse
-  (lambda ()
-    (let* ((lhs (lhs-parse))
+  (lambda (firstsymbol)
+    (let* ((lhs (lhs-parse firstsymbol))
            (op (get-next-symbol)))
       (if (and (eq? (car op) 'BINARY-OP) (eq? (cdr op) '=))
           (append (cons (cdr op) lhs) (list (value-parse)))
@@ -146,11 +221,10 @@
 ; parse the left hand side of an assignment.  Only variables are allowed.
 
 (define lhs-parse
-  (lambda ()
-    (let ((lhs (get-next-symbol)))
-      (if (eq? (car lhs) 'ID)
-         (list (cdr lhs))
-         (error 'parser "Illegal left hand side of assignment")))))
+  (lambda (lhs)
+    (if (eq? (car lhs) 'ID)
+        (list (cdr lhs))
+        (error 'parser "Illegal left hand side of assignment"))))
 
 ; parse a value.  The top level of the parse is the assignment operator.
 
@@ -270,18 +344,23 @@
 
 (define operand-parse
   (lambda (firstsymbol)
-     ;(let ((firstsymbol (get-next-symbol)))
-       (cond
-          ((eq? (car firstsymbol) 'LEFTPAREN)
-             (let ((retvalue (value-parse)))
-               (if (eq? (car (get-next-symbol)) 'RIGHTPAREN)
-                  retvalue
-                  (error 'parser "Unmatched left parenthesis"))))
-          ((and (eq? (car firstsymbol) 'BINARY-OP) (eq? (cdr firstsymbol) '-)) (list '- (operand-parse (get-next-symbol))))  ; this is a new line
-          ((and (eq? (car firstsymbol) 'BINARY-OP) (eq? (cdr firstsymbol) '!)) (list '! (operand-parse (get-next-symbol))))  ; this is a new line
-          ((eq? (car firstsymbol) 'NUMBER) (cdr firstsymbol))
-          ((eq? (car firstsymbol) 'ID) (cdr firstsymbol))
-          ((eq? (car firstsymbol) 'BOOLEAN) (cdr firstsymbol))
-          (else (error 'parser "Unknown statmement")))));)
+    (cond
+      ((eq? (car firstsymbol) 'LEFTPAREN)
+          (let ((retvalue (value-parse)))
+            (if (eq? (car (get-next-symbol)) 'RIGHTPAREN)
+                retvalue
+                (error 'parser "Unmatched left parenthesis"))))
+      ((and (eq? (car firstsymbol) 'BINARY-OP) (eq? (cdr firstsymbol) '-)) (list '- (operand-parse (get-next-symbol))))  ; this is a new line
+      ((and (eq? (car firstsymbol) 'BINARY-OP) (eq? (cdr firstsymbol) '!)) (list '! (operand-parse (get-next-symbol))))  ; this is a new line
+      ((eq? (car firstsymbol) 'NUMBER) (cdr firstsymbol))
+      ((eq? (car firstsymbol) 'ID)
+             (let ((secondsymbol (get-next-symbol)))
+               (if (eq? (car secondsymbol) 'LEFTPAREN)
+                   (funcall-parse (cdr firstsymbol))
+                   (begin
+                     (unget-next-symbol)
+                     (cdr firstsymbol)))))
+      ((eq? (car firstsymbol) 'BOOLEAN) (cdr firstsymbol))
+      (else (error 'parser "Unknown statmement")))));)
 
 
