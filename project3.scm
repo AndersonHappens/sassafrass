@@ -397,4 +397,4 @@
 ; Calls a function to change the state
 (define M_state_function_call
   (lambda (funcCall state)
-    (evaluate (func_code (M_value_var (func_name funcCall) state)) (create_func_eniv (func_name funcCall) (param_values (func_param_values funcCall) state) state) (lambda (v) v) (lambda (v) v) (lambda (v) state))))
+    (evaluate (func_code_list (M_value_var (func_name funcCall) state)) (create_func_envi (func_name funcCall) (param_values (func_param_values funcCall) state) state) (lambda (v) v) (lambda (v) v) (lambda (v) state))))
