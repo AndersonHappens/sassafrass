@@ -381,8 +381,8 @@
 
 ;closure only
 (define func_param_names
-  (lambda (funcCall)
-    (car funcCall)))
+  (lambda (funcClosure)
+    (car funcClosure)))
 
 ;closure only
 (define func_code_list
