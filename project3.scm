@@ -354,3 +354,6 @@
 (define M_value_function_call
   (lambda funcCall
     (evaluate (func_code (M_value_var (func_name funcCall))) (create_func_eniv (func_name funcCall) (func_param_values funcCall) state) (lambda (v) v) (lambda (v) v))))
+
+; M_state_function_call
+; Calls 
