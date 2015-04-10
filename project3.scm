@@ -10,7 +10,7 @@
 ;parses and interprets the code in the given file
 (define interpret
   (lambda (filename)
-    (evaluate (append (parser filename) '((return (funcall main '())))) (newEnvironment) (lambda (v) v) (lambda (v) v) (lambda (v) v))))
+    (evaluate (append (parser filename) '((return (funcall main)))) (newEnvironment) (lambda (v) v) (lambda (v) v) (lambda (v) v))))
 ;lambda (v) v as placeholders for continue and break, acts as do nothing until in a loop.
 
 ;defines the newEnvironment consisting of 1 layer in a list
@@ -393,7 +393,9 @@
 ; Returns the value of a function call
 (define M_value_function_call
   (lambda (funcCall state)
-    (call/cc (lambda (return) (evaluate (func_code_list (M_value_var (func_name funcCall) state)) (create_func_envi (func_name funcCall) (param_values (func_param_values funcCall) state) state) (lambda (v) v) (lambda (v) v) return)))))
+    (if (not (= (length (car (M_value_var (func_name funcCall) state))) (length (func_param_values funcCall))))
+        (error 'Function_argument_mismatch)
+        (call/cc (lambda (return) (evaluate (func_code_list (M_value_var (func_name funcCall) state)) (create_func_envi (func_name funcCall) (param_values (func_param_values funcCall) state) state) (lambda (v) v) (lambda (v) v) return))))))
 
 ; param_values
 ; calculates the parameter values for function calls
