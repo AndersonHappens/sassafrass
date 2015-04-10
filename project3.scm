@@ -1,7 +1,7 @@
 ; Jake Anderson, jta40
 ; Joseph Tate, jgt17
 ; Michael Volkovitsch, mtv25
-; EECS 345, Project 2
+; EECS 345, Project 3
 
 (load "functionParser.scm")
 
@@ -73,6 +73,8 @@
         ((eq? stmttype 'begin) (M_state_block stmt state continue break))
         ((eq? stmttype 'break) (M_state_break state break))
         ((eq? stmttype 'continue) (M_state_continue state continue))
+        ((eq? stmttype 'function) (M_state_function_declaration stmt state))
+        ((eq? stmttype 'funcall) (M_state_function_call stmt state))
         (else (error 'Invalid_stmt_type))))
       stmt state (stmttype stmt))))
 
@@ -208,6 +210,7 @@
       ((and (eq? '- (operator expression)) (null? (cddr expression))) (- 0 (M_value (lOperand expression) state)))
       ((eq? '- (operator expression)) (- (M_value (lOperand expression) state) (M_value (rOperand expression) state)))
       ((eq? '* (operator expression)) (* (M_value (lOperand expression) state) (M_value (rOperand expression) state)))
+      ((eq? 'funcall (operator expression)) (M_value_function_call expression state))
       (else (M_bool expression state)))))
 
 ; M_boolean, handles conditionals and equality ==, !=, <, >, <=, >=
@@ -319,3 +322,35 @@
   (lambda (state continue)
     (continue state)))
 
+; M_state_function_declaration
+; creates the function closure and adds it to the state
+(define M_state_function_declaration
+  (lambda (funcdef state)
+    (addvar (func_name funcDef) (append (func_params funcDef) (func_code funcDef) state))))
+
+;helper functions for functions
+;both def and call
+(define func_name
+  (lambda func
+    (cadr func)))
+
+;def only
+(define func_params
+  (lamba funcDef
+    (caddr funcDef)))
+
+;def only
+(define func_code
+  (lambda funcDef
+    (cadddr funcDef)))
+
+;call only
+(define func_param_values
+  (lambda funcCall
+    (cddr funcCall)))
+
+; M_value_function_call
+; Returns the value of a function call
+(define M_value_function_call
+  (lambda funcCall
+    (evaluate (func_code (M_value_var (func_name funcCall))) (create_func_eniv (func_name funcCall) (func_param_values funcCall) state) (lambda (v) v) (lambda (v) v))))
