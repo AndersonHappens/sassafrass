@@ -317,7 +317,7 @@
 ; modified by M_state_block calls so that it removes the layer(s) before triggering the continuation.
 (define M_state_continue
   (lambda (state continue)
-    (continue state)))
+    (continue state))) 
 
 ; create_func_envi
 (define create_func_envi
@@ -331,4 +331,4 @@
     (cond
       ((null? (vars layer)) '())
       ((eq? name (firstvarname layer)) layer)
-      (else (pruneLayer (name (trimlayer layer)))))))
+      (else   (pruneLayer (name (trimlayer layer)))))))   
