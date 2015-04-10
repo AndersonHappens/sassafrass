@@ -1,7 +1,12 @@
-var x = 0;
-while (x < 10) {
-  x = x - 1;
-  break;
-  x = x + 100;
+function fib(a) {
+  if (a == 0)
+    return 0;
+  else if (a == 1)
+    return 1;
+  else 
+    return fib(a-1) + fib(a-2);
 }
-return x;
+
+function main() {
+  return fib(10);
+}

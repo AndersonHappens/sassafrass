@@ -1,12 +1,17 @@
-var x = 1;
-var y = x + 1;
-if (x < y) {
-  var z = 10;
+var a = 10;
+var b = 20;
 
-  if (x < z) {
-    var swap = y;
-    y = x;
-    x = swap;
-  }
+function bmethod() {
+  var b = 30;
+  return a + b;
 }
-return x;
+
+function cmethod() {
+  var a = 40;
+  return bmethod() + a + b;
+}
+
+function main () {
+  var b = 5;
+  return cmethod() + a + b;
+}

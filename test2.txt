@@ -1,7 +1,6 @@
-var x = 10;
-{
-  var y = 2;
-  var z = x * y;
-  x = z;
+var x = 4;
+var y = 6 + x;
+
+function main() {
+  return x + y;
 }
-return x;
