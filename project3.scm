@@ -91,9 +91,11 @@
 ;checks if it's a boolean statement or number statement and returns the correct evaluation of the statement
 (define M_state_return
   (lambda (exp s)
+    (newline)
+    (display "returning ") (display exp)
     (cond
       ((null? exp) '())
-      ((number? (M_value (cadr exp) s)) (M_value (car (cdr exp)) s))
+      ((number? (M_value (cadr exp) s)) (M_value (cadr exp) s))
       ((boolean? (M_bool (cadr exp) s)) (boolReturnHelper (M_bool (car (cdr exp)) s)))
       (else (M_value (cadr exp) s)))))
 
@@ -388,7 +390,8 @@
 (define M_value_function_call
   (lambda (funcCall state)
     (newline)
-    (display "i was called")
+    (display "this next thing is me")
+    (newline)
     (evaluate (func_code_list (M_value_var (func_name funcCall) state)) (create_func_envi (func_name funcCall) (param_values (func_param_values funcCall) state) state) (lambda (v) v) (lambda (v) v))))
 
 ; param_values
