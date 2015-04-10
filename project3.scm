@@ -391,7 +391,7 @@
 ; Returns the value of a function call
 (define M_value_function_call
   (lambda (funcCall state)
-    (evaluate (func_code_list (M_value_var (func_name funcCall) state)) (create_func_envi (func_name funcCall) (param_values (func_param_values funcCall) state) state) (lambda (v) v) (lambda (v) v) (lambda (v) v))))))
+    (call/cc (lambda (return) (evaluate (func_code_list (M_value_var (func_name funcCall) state)) (create_func_envi (func_name funcCall) (param_values (func_param_values funcCall) state) state) (lambda (v) v) (lambda (v) v) return)))))
 
 ; param_values
 ; calculates the parameter values for function calls
