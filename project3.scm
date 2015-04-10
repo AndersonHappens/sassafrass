@@ -10,7 +10,7 @@
 ;parses and interprets the code in the given file
 (define interpret
   (lambda (filename)
-    (evaluate (parser filename) (newEnvironment) (lambda (v) v) (lambda (v) v))))
+    (evaluate (cons (parser filename) '(return (funcall main))) (newEnvironment) (lambda (v) v) (lambda (v) v))))
 ;lambda (v) v as placeholders for continue and break, acts as do nothing until in a loop.
 
 ;defines the newEnvironment consisting of 1 layer in a list
@@ -169,7 +169,7 @@
 (define M_value_var
   (lambda (varname state)
     (if (null? state)
-        (error 'Variable_not_declared))
+        (error 'Variable/function_not_declared))
         ((lambda (varval)
           (if (null? varval)
               (M_value_var varname (removeLayer state))
@@ -326,9 +326,12 @@
 (define create_func_envi
   (lambda (name state)
     (cond
-      ((null? state) '())
-      ((null? (pruneLayer name (car state))) (create_func_envi name (cdr state)))
-      (else (cons (pruneLayer name (car state)) (cdr state))))))
+      ;((null? state) '())
+      ;((null? (pruneLayer name (car state))) (create_func_envi name (cdr state)))
+      ;(else (cons (pruneLayer name (car state)) (cdr state))))))
+      (if (isdeclaredinlayer? name (car state))
+          (cons (pruneLayer name (car state)) (cdr state))
+          (create_func_envi name (cdr state))))))
 (define pruneLayer
   (lambda (name layer)
     (cond
