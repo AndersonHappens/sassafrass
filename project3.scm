@@ -53,6 +53,7 @@
 ;returns the current statement (car of the statement list)
 (define firststmt
   (lambda (stmts)
+    (display (car stmts))
     (car stmts)))
 
 ;returns the type of a stmt (car of the stmt) ("=" is assignment)
@@ -346,37 +347,43 @@
 ; creates the function closure and adds it to the state
 (define M_state_function_declaration
   (lambda (funcDef state)
-    (addvar (func_name funcDef) (append (func_params funcDef) (func_code funcDef) state))))
+    (newline)
+    (display funcDef)
+    (newline)
+    (addvar (func_name funcDef) (append (func_params funcDef) (func_code funcDef)) state)))
 
 ;helper functions for functions
 ;both def and call
 (define func_name
-  (lambda func
+  (lambda (func)
+    (newline)
+    (display func)
+    (newline)
     (cadr func)))
 
 ;def only
 (define func_params
-  (lambda funcDef
+  (lambda (funcDef)
     (caddr funcDef)))
 
 ;def only
 (define func_code
-  (lambda funcDef
+  (lambda (funcDef)
     (cadddr funcDef)))
 
 ;call only
 (define func_param_values
-  (lambda funcCall
+  (lambda (funcCall)
     (cddr funcCall)))
 
 ; M_value_function_call
 ; Returns the value of a function call
 (define M_value_function_call
-  (lambda funcCall
+  (lambda (funcCall)
     (evaluate (func_code (M_value_var (func_name funcCall))) (create_func_eniv (func_name funcCall) (func_param_values funcCall) state) (lambda (v) v) (lambda (v) v))))
 
 ; M_state_function_call
 ; Calls a function to change the state
 (define M_value_function_call
-  (lambda funcCall
+  (lambda (funcCall)
     (evaluate (func_code (M_value_var (func_name funcCall))) (create_func_eniv (func_name funcCall) (func_param_values funcCall) state) (lambda (v) v) (lambda (v) v))))
