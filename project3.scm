@@ -336,7 +336,7 @@
 
 ;def only
 (define func_params
-  (lamba funcDef
+  (lambda funcDef
     (caddr funcDef)))
 
 ;def only
