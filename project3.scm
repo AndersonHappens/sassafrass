@@ -11,7 +11,7 @@
 (define interpret
   (lambda (filename)
     (evaluate (append (parser filename) '((return (funcall main)))) (newEnvironment) (lambda (v) v) (lambda (v) v) (lambda (v) v))))
-;lambda (v) v as placeholders for continue and break, acts as do nothing until in a loop.
+;lambda (v) v as placeholders for continue, break, and return, acts as do nothing until in a loop or function.
 
 ;defines the newEnvironment consisting of 1 layer in a list
 (define newEnvironment
@@ -43,10 +43,6 @@
 ;evaluate the parse tree
 (define evaluate
   (lambda (stmts state continue break return)
-    ;(display stmts)
-    ;(newline)
-    ;(display state)
-    ;(newline)
     (cond
       ((not (list? state)) state)
       ((null? stmts) state)
@@ -95,17 +91,9 @@
 ;checks if it's a boolean statement or number statement and returns the correct evaluation of the statement
 (define M_state_return
   (lambda (exp s return)
-    ;(newline)
-    ;(display "return: ")
-    ;(display exp)
-    ;(newline)
-    ;(display s)
-    ;(newline)
     (return (cond
               ((null? exp) '())
               (else ((lambda (v)
-                       ;(display v)
-                       ;(newline)
                        (if (boolean? v)
                            (boolReturnHelper v)
                            v))
@@ -300,7 +288,7 @@
   (lambda (assignment state)
     (if (isdeclared? (varName assignment) state)
       (updatevar (varName assignment) (M_value (expr assignment) state) state)
-      (error 'Variable_not_declared))))
+      (error 'Variable/Function_not_declared))))
 
 ; misc definitions for M_state_assign
 (define varName
@@ -349,17 +337,21 @@
     (continue state))) 
 
 ; create_func_envi
+; creates the environment for functions to run in
 (define create_func_envi
   (lambda (name values state)
     (if (isdeclaredinlayer? name (car state))
         (addParams (func_param_names (M_value_var name state)) values (addLayer (cons (pruneLayer name (car state)) (removeLayer state))))
         (create_func_envi name values (removeLayer state)))))
+; create_func_envi helpers
+; removes all variables in a layer before the one with the given name
 (define pruneLayer
   (lambda (name layer)
     (cond
       ((null? (vars layer)) '())
       ((eq? name (firstvarname layer)) layer)
       (else   (pruneLayer name (trimlayer layer))))))
+;adds the function parameters to the function state
 (define addParams
   (lambda (names values state)
     (cond
