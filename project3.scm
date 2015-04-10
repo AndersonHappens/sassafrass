@@ -280,9 +280,11 @@
 ;M_state_assign
 (define M_state_assign
   (lambda (assignment state)
+    (display assignment)
     (if (isdeclared? (varName assignment) state)
       (updatevar (varName assignment) (M_value (expr assignment) state) state)
-      (error 'Variable_not_declared))))
+      (error 'Variable_not_declared))
+    (display (M_value (varName assignment) state))))
 
 ; misc definitions for M_state_assign
 (define varName
@@ -389,7 +391,7 @@
 ; Returns the value of a function call
 (define M_value_function_call
   (lambda (funcCall state)
-    (call/cc (lambda (return) (evaluate (func_code_list (M_value_var (func_name funcCall) state)) (create_func_envi (func_name funcCall) (param_values (func_param_values funcCall) state) state) (lambda (v) v) (lambda (v) v) return)))))
+    (evaluate (func_code_list (M_value_var (func_name funcCall) state)) (create_func_envi (func_name funcCall) (param_values (func_param_values funcCall) state) state) (lambda (v) v) (lambda (v) v) (lambda (v) v))))))
 
 ; param_values
 ; calculates the parameter values for function calls
@@ -403,4 +405,6 @@
 ; Calls a function to change the state
 (define M_state_function_call
   (lambda (funcCall state)
+    (newline)
+    (display state)
     (evaluate (func_code_list (M_value_var (func_name funcCall) state)) (create_func_envi (func_name funcCall) (param_values (func_param_values funcCall) state) state) (lambda (v) v) (lambda (v) v) (lambda (v) state))))
