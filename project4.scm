@@ -9,9 +9,15 @@
 
 ;parses and interprets the code in the given file
 (define interpret
-  (lambda (filename classname)
-    (evaluate (append (parser filename) '((return (funcall main)))) (newEnvironment) (lambda (v) v) (lambda (v) v) (lambda (v) v))))
+  (lambda (filename className)
+    (evaluate (append (parser filename) (mainCall className)) (newEnvironment) (lambda (v) v) (lambda (v) v) (lambda (v) v))))
 ;lambda (v) v as placeholders for continue, break, and return, acts as do nothing until in a loop or function.
+
+;returns the command to trigger a call to the appropriate main
+;"((return (funcall (dot <className> main))))"
+(define mainCall
+  (lambda (className)
+    (list (cons 'return (list (cons 'funcall (list (cons 'dot (cons className '(main))))))))))
 
 ;defines the newEnvironment consisting of 1 layer in a list
 (define newEnvironment
@@ -75,6 +81,9 @@
         ((eq? stmttype 'continue) (M_state_continue state continue))
         ((eq? stmttype 'function) (M_state_function_declaration stmt state))
         ((eq? stmttype 'funcall) (M_state_function_call stmt state))
+        ((eq? stmttype 'class) (M_state_class stmt state))
+        ((eq? stmttype 'static-var) (M_state_static_var stmt state))
+        ((eq? stmttype 'static-function) (M_state_static_function stmt state))
         (else (error 'Invalid_stmt_type stmt))))
       stmt state (stmttype stmt))))
 
@@ -222,6 +231,7 @@
       ((eq? '- (operator expression)) (- (M_value (lOperand expression) state) (M_value (rOperand expression) state)))
       ((eq? '* (operator expression)) (* (M_value (lOperand expression) state) (M_value (rOperand expression) state)))
       ((eq? 'funcall (operator expression)) (M_value_function_call expression state))
+      ((eq? 'dot (operator expression)) (M_value_dot expression state))
       (else (M_bool expression state)))))
 
 ; M_boolean, handles conditionals and equality ==, !=, <, >, <=, >=
@@ -245,6 +255,7 @@
       ((eq? '|| (operator expression)) (or (M_bool (lOperand expression) state) (M_bool (rOperand expression) state)))
       ((eq? '! (operator expression)) (not (M_bool (lOperand expression) state)))
       ((eq? 'funcall (operator expression)) (M_value_function_call expression state))
+      ((eq? 'dot (operator expression)) (M_value_dot expression state))
       (else '(not_a_bool)))))
           
 ; misc definitions for M_value, M_bool
@@ -416,3 +427,38 @@
 (define M_state_function_call
   (lambda (funcCall state)
     (append (evaluate (func_code_list (M_value_var (func_name funcCall) state)) (create_func_envi (func_name funcCall) (param_values (func_param_values funcCall) state) state) (lambda (v) v) (lambda (v) v) (lambda (v) state)) (cdr state))))
+
+;M_state_class
+;adds a class definition to the state
+(define M_state_class
+  (lambda (class state)
+    (addvar (className (classEniv class) state))))
+
+;helper functions for parts of the class
+(define className
+  (lambda (class)
+    (cadr class)))
+
+(define superClass
+  (lambda (class)
+    (caddr class)))
+
+(define classBody
+  (lambda (class)
+    (cadddr class)))
+
+;makes the enivronment of the class
+(define classEniv
+  (lambda (class)
+    (evaluate (classBody class) (addvar 'super (superClass class) (newEnvironment)) (lambda (v) v) (lambda (v) v) (lambda (v) v))))
+
+;M_state_dot
+;evaluates the dot expression
+(define M_state_dot
+  (lambda (dot state)
+    (M_state (caddr dot) (append (M_value_var (cadr dot)) state))))
+     
+;M_value_dot
+(define M_state_dot
+  (lambda (dot state)
+    (M_value (caddr dot) (append (M_value_var (cadr dot)) state))))
