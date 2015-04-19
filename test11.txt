@@ -1,16 +1,15 @@
-var x = 0;
-var y = 0;
+class A {
+  static var total = 0;
 
-function setx(a) {
-  x = a;
-}
+  static function sum(x) {
+    if (x > 0) {
+      total = total + x;
+      sum(x - 1);
+    }
+  }
 
-function sety(b) {
-  y = b;
-}
-
-function main() {
-  setx(5);
-  sety(7);
-  return x * y;
+  static function main() {
+    sum(5);
+    return total;
+  }
 }

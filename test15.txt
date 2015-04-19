@@ -1,28 +1,29 @@
-function f(n) {
-  var a;
-  var b;
-  var c;
+class Pow {
+  static function main() {
+    var result;
+    var base;
 
-  a = 2 * n;
-  b = n - 10;
+    function getpow(a) {
+       var x;
 
-  function g(x) {
-    var a;
-    a = x + 1;
-    b = 100;
-    return a;
+       function setanswer(n) {
+          result = n;
+       }
+
+       function recurse(m) {
+         if (m > 0) {
+           x = x * base;
+           recurse(m-1);
+         }
+         else
+           setanswer(x);
+       }
+
+       x = 1;
+       recurse(a);
+    }
+    base = 2;
+    getpow(6);
+    return result;
   }
-
-  if (b == 0)
-    c = g(a);
-  else
-    c = a / b;
-  return a + b + c;
-}
-
-function main() {
-  var x = f(10);
-  var y = f(20);
-
-  return x - y;
 }

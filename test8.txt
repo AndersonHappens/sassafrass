@@ -1,17 +1,27 @@
-function fact(n) {
-  var f = 1;
-  while (n > 1) {
-    f = f * n;
-    n = n - 1;
+class A {
+  static var a = 1;
+  static var b = 10;
+
+  static function setA(x) {
+    a = x;
   }
-  return f;
+
+  static function getSum() {
+    return a + b;
+  }
 }
 
-function binom(a, b) {
-  var val = fact(a) / (fact(b) * fact(a-b));
-  return val;
+class B {
+  static function main() {
+    A.setA(5);
+
+    return A.getSum() + C.x + C.timesX(A.a);
+  }
 }
 
-function main() {
-  return binom(6,3);
+class C {
+  static var x = 100;
+  static function timesX(a) {
+    return a * x;
+  }
 }

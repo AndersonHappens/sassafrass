@@ -1,11 +1,23 @@
-function main() {
-  function h() {
-    return 10;
+class A {
+  static function divide(x, y) {
+    if (y == 0)
+      throw y;
+    return x / y;
   }
 
-  function g() {
-    return 100;
-  }
+  static function main() {
+    var x;
 
-  return g() - h();
+    try {
+      x = divide(10, 5) * 10;
+      x = x + divide(5, 0);
+    }
+    catch(e) {
+      x = e;
+    }
+    finally {
+      x = x + 100;
+    }
+    return x;
+  }
 }
