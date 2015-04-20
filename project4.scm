@@ -10,7 +10,7 @@
 ;parses and interprets the code in the given file
 (define interpret
   (lambda (filename className)
-    (evaluate (append (parser filename) (mainCall className)) (newEnvironment) (lambda (v) v) (lambda (v) v) (lambda (v) v))))
+    (evaluate (append (parser filename) (mainCall className)) (newEnvironment) className (lambda (v) v) (lambda (v) v) (lambda (v) v))))
 ;lambda (v) v as placeholders for continue, break, and return, acts as do nothing until in a loop or function.
 
 ;returns the command to trigger a call to the appropriate main
@@ -48,11 +48,11 @@
 
 ;evaluate the parse tree
 (define evaluate
-  (lambda (stmts state continue break return)
+  (lambda (stmts state class continue break return)
     (cond
       ((not (list? state)) state)
       ((null? stmts) state)
-      (else (evaluate (cdr stmts) (M_state (firststmt stmts) state continue break return) continue break return)))))
+      (else (evaluate (cdr stmts) (M_state (firststmt stmts) state class continue break return) state continue break return)))))
 
 
 ;returns the current statement (car of the statement list)
@@ -68,12 +68,15 @@
 ;Main M_state
 ;checks type of statement, passes it down to the correct Mstate handler
 (define M_state
-  (lambda (stmt state continue break return)
-    ((lambda (stmt state stmttype)
+  (lambda (stmt state class continue break return)
+    ((lambda (stmt state class stmttype)
+       (display '_state:)
+       (display stmt)
+       (newline)
       (cond
-        ((eq? stmttype 'var) (M_state_var stmt state))
+        ((eq? stmttype 'var) (M_state_var stmt state class))
         ((eq? stmttype '=) (M_state_assign stmt state))
-        ((eq? stmttype 'return) (M_state_return stmt state return))
+        ((eq? stmttype 'return) (M_state_return stmt state class return))
         ((eq? stmttype 'if) (M_state_if stmt state continue break return))
         ((eq? stmttype 'while) (M_state_while stmt state return))
         ((eq? stmttype 'begin) (M_state_block stmt state continue break return))
@@ -82,31 +85,32 @@
         ((eq? stmttype 'function) (M_state_function_declaration stmt state))
         ((eq? stmttype 'funcall) (M_state_function_call stmt state))
         ((eq? stmttype 'class) (M_state_class stmt state))
-        ((eq? stmttype 'static-var) (M_state_static_var stmt state))
-        ((eq? stmttype 'static-function) (M_state_static_function stmt state))
+        ((eq? stmttype 'static-var) (M_state_static_var stmt state class))
+        ((eq? stmttype 'static-function) (M_state_static_function_declaration stmt state))
+        ;((eq? stmttype 'static-function) (M_state_static_function_call stmt state))
         (else (error 'Invalid_stmt_type stmt))))
-      stmt state (stmttype stmt))))
+      stmt state class (stmttype stmt))))
 
 ;M_state_var
 (define M_state_var
-  (lambda (stmt state)
+  (lambda (stmt state class)
     (cond
       ((and (isdeclaredinlayer? (cadr stmt) (topLayer state)) (null? (cddr stmt))) state)
       ((isdeclaredinlayer? (cadr stmt) (topLayer state)) (error 'Redefining_Variable))
       ((null? (cddr stmt)) (addvar (cadr stmt) '() state))
-      (else (addvar (cadr stmt) (M_value (caddr stmt) state) state)))))
+      (else (addvar (cadr stmt) (M_value (caddr stmt) state class) state)))))
 
 ;M_state_return
 ;checks if it's a boolean statement or number statement and returns the correct evaluation of the statement
 (define M_state_return
-  (lambda (exp s return)
+  (lambda (exp s class return)
     (return (cond
               ((null? exp) '())
               (else ((lambda (v)
                        (if (boolean? v)
                            (boolReturnHelper v)
                            v))
-                     (M_value (cadr exp) s)))))))
+                     (M_value (cadr exp) s class)))))))
 
 ; handles returning true and false instead of #t and #f
 (define boolReturnHelper
@@ -135,13 +139,6 @@
     (if (isdeclaredinlayer? var (topLayer state))
         (begin (set-box! (car (vals (pruneLayer var (topLayer state)))) val) originalState)
         (updatevar2 var val (removeLayer state) originalState))))
-
-; helper method for updating a variable
-;(define updatevar2
- ; (lambda (var val state return)
-  ;  (if (isdeclaredinlayer? var (topLayer state))
-   ;     (return (cons (updatevarlayer var val (topLayer state)) (removeLayer state)))
-    ;    (updatevar2 var val (removeLayer state) (lambda (v) (return (cons (topLayer state) v)))))))
 
 ; helper method to update a variable in a specific layer
 (define updatevarlayer
@@ -185,14 +182,23 @@
     
 ;returns the value assigned to varname in the state
 (define M_value_var
-  (lambda (varname state)
-    (if (null? state)
-        (error 'Variable/function_not_declared))
+  (lambda (varname state class)
+    (display '_val_var)
+    (newline)
+    (display varname)
+    (newline)
+    (display state)
+    (newline)
+    (cond 
+      ((and (null? state) (null? class)) (error 'Variable/function_not_declared))
+      ((null? (cdr state)) (M_value_var varname (M_state_dot (cons 'dot (cons class (list varname))) state '())))
+      ((list? varname) (M_value_dot varname state class))
+      (else
         ((lambda (varval)
           (if (null? varval)
-              (M_value_var varname (removeLayer state))
+              (M_value_var varname (removeLayer state) class)
               varval))
-         (M_value_var_layer varname (topLayer state)))))
+         (M_value_var_layer varname (topLayer state)))))))
 
 ;helper method for M_value_var, returns the value assigned to varname in a layer, or null if the variable does not exist in that layer
 (define M_value_var_layer
@@ -218,19 +224,20 @@
 
 ; M_value, handles +,-,*,/,% and calls M_value_var if it finds a variable
 (define M_value
-  (lambda (expression state)
+  (lambda (expression state class)
+    (display expression)
     (cond
       ((number? expression) expression)
       ((or (eq? expression '#t) (eq? expression '#f)) (M_bool expression state))
       ((or (eq? expression 'true) (eq? expression 'false)) (M_bool expression state))
-      ((not (list? expression)) (M_value_var expression state))
+      ((not (list? expression)) (M_value_var expression state class))
       ((eq? '+ (operator expression)) (+ (M_value (lOperand expression) state) (M_value (rOperand expression) state)))
       ((eq? '/ (operator expression)) (quotient (M_value (lOperand expression) state) (M_value (rOperand expression) state)))
       ((eq? '% (operator expression)) (remainder (M_value (lOperand expression) state) (M_value (rOperand expression) state)))
       ((and (eq? '- (operator expression)) (null? (cddr expression))) (- 0 (M_value (lOperand expression) state)))
       ((eq? '- (operator expression)) (- (M_value (lOperand expression) state) (M_value (rOperand expression) state)))
       ((eq? '* (operator expression)) (* (M_value (lOperand expression) state) (M_value (rOperand expression) state)))
-      ((eq? 'funcall (operator expression)) (M_value_function_call expression state))
+      ((eq? 'funcall (operator expression)) (M_value_function_call expression state class))
       ((eq? 'dot (operator expression)) (M_value_dot expression state))
       (else (M_bool expression state)))))
 
@@ -350,10 +357,18 @@
 ; create_func_envi
 ; creates the environment for functions to run in
 (define create_func_envi
-  (lambda (name values state)
-    (if (isdeclaredinlayer? name (car state))
-        (addParams (func_param_names (M_value_var name state)) values (addLayer (cons (pruneLayer name (car state)) (removeLayer state))))
-        (create_func_envi name values (removeLayer state)))))
+  (lambda (name values state class)
+    (display name)
+    (newline)
+    (display values)
+    (newline)
+    (display state)
+    (newline)
+    (cond
+      ((list? name) (create_func_envi (caddr name) values (addvar (caddr name) (M_value_dot name state class) state) class))
+      ((isdeclaredinlayer? name (car state)) (addParams (func_param_names (M_value_var name state class)) values (addLayer (cons (pruneLayer name (car state)) (removeLayer state)))))
+      (else (create_func_envi name values (removeLayer state))))))
+
 ; create_func_envi helpers
 ; removes all variables in a layer before the one with the given name
 (define pruneLayer
@@ -409,10 +424,15 @@
 ; M_value_function_call
 ; Returns the value of a function call
 (define M_value_function_call
-  (lambda (funcCall state)
-    (if (not (= (length (car (M_value_var (func_name funcCall) state))) (length (func_param_values funcCall))))
-        (error 'Function_argument_mismatch)
-        (call/cc (lambda (return) (evaluate (func_code_list (M_value_var (func_name funcCall) state)) (create_func_envi (func_name funcCall) (param_values (func_param_values funcCall) state) state) (lambda (v) v) (lambda (v) v) return))))))
+  (lambda (funcCall state class)
+    (display '_func_call)
+             (newline)
+    (display funcCall)
+    (newline)
+    (cond
+      ((not (= (length (car (M_value_var (func_name funcCall) state class))) (length (func_param_values funcCall)))) (error 'Function_argument_mismatch))
+      ((list? (func_name funcCall)) (call/cc (lambda (return) (evaluate (func_code_list (M_value_dot (func_name funcCall) state class)) (create_func_envi (func_name funcCall) (param_values (func_param_values funcCall) state) state class) class (lambda (v) v) (lambda (v) v) return))))
+      (else (call/cc (lambda (return) (evaluate (func_code_list (M_value_var (func_name funcCall) state)) (create_func_envi (func_name funcCall) (param_values (func_param_values funcCall) state) state) (lambda (v) v) (lambda (v) v) return)))))))
 
 ; param_values
 ; calculates the parameter values for function calls
@@ -432,7 +452,7 @@
 ;adds a class definition to the state
 (define M_state_class
   (lambda (class state)
-    (addvar (className (classEniv class) state))))
+    (addvar (className class) (classEniv class) state)))
 
 ;helper functions for parts of the class
 (define className
@@ -450,15 +470,41 @@
 ;makes the enivronment of the class
 (define classEniv
   (lambda (class)
-    (evaluate (classBody class) (addvar 'super (superClass class) (newEnvironment)) (lambda (v) v) (lambda (v) v) (lambda (v) v))))
+    (evaluate (classBody class) (addvar 'super (superClass class) (newEnvironment)) class (lambda (v) v) (lambda (v) v) (lambda (v) v))))
 
 ;M_state_dot
 ;evaluates the dot expression
 (define M_state_dot
-  (lambda (dot state)
-    (M_state (caddr dot) (append (M_value_var (cadr dot)) state))))
+  (lambda (dot state class)
+    (display '_dot)
+    (newline)
+    (display (cadr dot))
+    (newline)
+    (display (M_value_var (cadr dot) state class))
+    (newline)
+    (M_state (caddr dot) (append (M_value_var (cadr dot) state) state))))
      
 ;M_value_dot
-(define M_state_dot
-  (lambda (dot state)
-    (M_value (caddr dot) (append (M_value_var (cadr dot)) state))))
+(define M_value_dot
+  (lambda (dot state class)
+    (display '_dot_val)
+    (newline)
+    (display (cadr dot))
+    (newline)
+    (display (M_value_var (cadr dot) state class))
+    (newline)
+    (display (caddr dot))
+    (newline)
+    (display (append (M_value_var (cadr dot) state class) state))
+    (newline)
+    (M_value (caddr dot) (append (M_value_var (cadr dot) state class) state) class)))
+
+;M_state_static_function
+(define M_state_static_function_declaration
+  (lambda (funcDef state)
+    (M_state_function_declaration funcDef state)))
+
+;M_state_static_var
+(define M_state_static_var
+  (lambda (stmt state class)
+    (M_state_var stmt state class)))
