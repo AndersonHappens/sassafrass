@@ -183,8 +183,8 @@
       ((and (list? varname) (eq? 'dot (car varname))) (M_value_dot varname state class))
       (else
         ((lambda (varval)
-          (if (null? varval)
-              (if (null? (cdr state))
+           (if (null? varval)
+              (if (and (null? (cdr state)) (not (eq? varname class)))
                   (M_value_var_class varname state class)
                   (M_value_var varname (removeLayer state) class))
               varval))
@@ -440,7 +440,11 @@
 
 (define superClass
   (lambda (class)
-    (caddr class)))
+    ((lambda (super)
+       (if (null? super)
+           'none
+           (cadr super)))
+    (caddr class))))
 
 (define classBody
   (lambda (class)
@@ -475,4 +479,12 @@
 ;M_value_var_class
 (define M_value_var_class
   (lambda (varname state class)
-    (M_value_var varname (M_value_var class state class) class)))
+    ((lambda (val)
+       ((lambda (super)
+          (if (null? val)
+            (if (eq? super 'none)
+              '()
+              (M_value_var varname (M_value_var super state super) super))
+            val))
+        (M_value_var 'super (M_value_var class state class) class)))
+    (M_value_var varname (M_value_var class state class) class))))
