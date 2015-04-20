@@ -350,7 +350,7 @@
     (cond
       ((list? name) (create_func_envi (caddr name) values (addvar (caddr name) (M_value_dot name state class) state) class))
       ((isdeclaredinlayer? name (car state)) (addParams (func_param_names (M_value_var name state class)) values (addLayer (cons (pruneLayer name (car state)) (removeLayer state))) class))
-      (else (create_func_envi name values (removeLayer state))))))
+      (else (create_func_envi name values (removeLayer state) class)))))
 
 ; create_func_envi helpers
 ; removes all variables in a layer before the one with the given name
@@ -411,7 +411,7 @@
     (cond
       ((not (= (length (car (M_value_var (func_name funcCall) state class))) (length (func_param_values funcCall)))) (error 'Function_argument_mismatch))
       ((list? (func_name funcCall)) (call/cc (lambda (return) (evaluate (func_code_list (M_value_dot (func_name funcCall) state class)) (create_func_envi (func_name funcCall) (param_values (func_param_values funcCall) state class) state class) class (lambda (v) v) (lambda (v) v) return))))
-      (else (call/cc (lambda (return) (evaluate (func_code_list (M_value_var (func_name funcCall) state)) (create_func_envi (func_name funcCall) (param_values (func_param_values funcCall) state) state) (lambda (v) v) (lambda (v) v) return)))))))
+      (else (call/cc (lambda (return) (evaluate (func_code_list (M_value_var (func_name funcCall) state class)) (create_func_envi (func_name funcCall) (param_values (func_param_values funcCall) state class) state class) (lambda (v) v) (lambda (v) v) return)))))))
 
 ; param_values
 ; calculates the parameter values for function calls
@@ -453,7 +453,7 @@
 ;makes the enivronment of the class
 (define classEniv
   (lambda (class)
-    (evaluate (classBody class) (addvar 'super (superClass class) (newEnvironment)) class (lambda (v) v) (lambda (v) v) (lambda (v) v))))
+    (evaluate (classBody class) (addvar 'super (superClass class) (addLayer (newEnvironment))) class (lambda (v) v) (lambda (v) v) (lambda (v) v))))
 
 ;M_state_dot
 ;evaluates the dot expression
@@ -479,12 +479,20 @@
 ;M_value_var_class
 (define M_value_var_class
   (lambda (varname state class)
-    ((lambda (val)
-       ((lambda (super)
-          (if (null? val)
-            (if (eq? super 'none)
-              '()
-              (M_value_var varname (M_value_var super state super) super))
-            val))
-        (M_value_var 'super (M_value_var class state class) class)))
-    (M_value_var varname (M_value_var class state class) class))))
+    (display '_var_class)
+    (newline)
+    (display varname)
+    (newline)
+    (display state)
+    (newline)
+    (display class)
+    (newline)
+    ((lambda (classEnvi)
+      (if (isdeclared? varname classEnvi)
+        (M_value_var varname classEnvi class)
+        ((lambda (super)
+          (if (eq? super 'none)
+            '()
+            (M_value_var_class varname state super)))
+         (M_value_var 'super classEnvi class))))
+      (M_value_var class state class))))
