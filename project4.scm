@@ -50,7 +50,7 @@
     (cond
       ((not (list? state)) state)
       ((null? stmts) state)
-      (else (evaluate (cdr stmts) (M_state (firststmt stmts) state class continue break return) state continue break return)))))
+      (else (evaluate (cdr stmts) (M_state (firststmt stmts) state class continue break return) class continue break return)))))
 
 
 ;returns the current statement (car of the statement list)
@@ -179,9 +179,9 @@
 (define M_value_var
   (lambda (varname state class)
     (cond 
-      ((and (null? state) (null? class)) (error 'Variable/function_not_declared))
-      ((list? varname) (M_value_dot varname state '()))
-      ((and (null? (cdr state))) (M_value_var_class varname state class))
+      ((or (null? state) (null? class)) (error 'Variable/function_not_declared))
+      ((and (list? varname) (eq? 'dot (car varname))) (M_value_dot varname state class))
+      ;((and (null? (cdr state)) (not (eq? varname class))) (M_value_var_class varname state class))
       (else
         ((lambda (varval)
           (if (null? varval)
