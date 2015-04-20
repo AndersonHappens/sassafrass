@@ -226,7 +226,7 @@
       ((and (eq? '- (operator expression)) (null? (cddr expression))) (- 0 (M_value (lOperand expression) state class)))
       ((eq? '- (operator expression)) (- (M_value (lOperand expression) state class) (M_value (rOperand expression) state class)))
       ((eq? '* (operator expression)) (* (M_value (lOperand expression) state class) (M_value (rOperand expression) state class)))
-      ((eq? 'funcall (operator expression)) (M_value_function_call expression state class))
+      ((eq? 'funcall (operator expression)) (get_function expression state class))
       ((eq? 'dot (operator expression)) (M_value_dot expression state class))
       (else (M_bool expression state class)))))
 
@@ -413,6 +413,20 @@
       ((list? (func_name funcCall)) (call/cc (lambda (return) (evaluate (func_code_list (M_value_dot (func_name funcCall) state class)) (create_func_envi (func_name funcCall) (param_values (func_param_values funcCall) state class) state class) class (lambda (v) v) (lambda (v) v) return))))
       (else (call/cc (lambda (return) (evaluate (func_code_list (M_value_var (func_name funcCall) state class)) (create_func_envi (func_name funcCall) (param_values (func_param_values funcCall) state class) state class) (lambda (v) v) (lambda (v) v) return)))))))
 
+(define get_function
+  (lambda (funcCall state class)
+    (if (list? (func_name funcCall));indicates that there's a dot call
+        (M_value_function_call funcCall state class)
+        (M_value_function_call (append (list 'funcall (list 'dot (find_defining_class (func_name funcCall) state class) (func_name funcCall))) (func_param_values funcCall)) state class))))
+
+(define find_defining_class
+  (lambda (name state class)
+    (cond
+      ((null? class) (error 'could_not_find_function))
+      ((isdeclared? name (M_value_var class state class)) class)
+      (else (find_defining_class name state (M_value_var 'super (M_value_var class state class) class))))))
+        
+
 ; param_values
 ; calculates the parameter values for function calls
 (define param_values
@@ -479,14 +493,6 @@
 ;M_value_var_class
 (define M_value_var_class
   (lambda (varname state class)
-    (display '_var_class)
-    (newline)
-    (display varname)
-    (newline)
-    (display state)
-    (newline)
-    (display class)
-    (newline)
     ((lambda (classEnvi)
       (if (isdeclared? varname classEnvi)
         (M_value_var varname classEnvi class)
