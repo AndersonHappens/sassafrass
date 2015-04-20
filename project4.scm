@@ -185,7 +185,9 @@
       (else
         ((lambda (varval)
           (if (null? varval)
-              (M_value_var varname (removeLayer state) class)
+              (if (null? (cdr state))
+                  (M_value_var_class varname state class)
+                  (M_value_var varname (removeLayer state) class))
               varval))
          (M_value_var_layer varname (topLayer state)))))))
 
