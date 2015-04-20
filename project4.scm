@@ -181,18 +181,18 @@
       (else (isdeclaredinlayer? varname (trimlayer layer))))))
     
 ;returns the value assigned to varname in the state
+(define M_value_var2
+  (lambda (varname state class)
+    (if (null? class)
+      ((M_state_dot (cons 'dot (cons class (list varname))) state '())))))
+
 (define M_value_var
   (lambda (varname state class)
     (display '_val_var)
-    (newline)
-    (display varname)
-    (newline)
-    (display state)
-    (newline)
     (cond 
       ((and (null? state) (null? class)) (error 'Variable/function_not_declared))
-      ((and (null? (cdr state)) (not (null? class))) (M_value_var varname (M_state_dot (cons 'dot (cons class (list varname))) state '())))
       ((list? varname) (M_value_dot varname state class))
+      ((and (null? (cdr state)) (not (null? class))) (M_value_var varname (M_state_dot (cons 'dot (cons class (list varname))) state '())))
       (else
         ((lambda (varval)
           (if (null? varval)
@@ -477,26 +477,13 @@
 (define M_state_dot
   (lambda (dot state class)
     (display '_dot)
-    (newline)
-    (display (cadr dot))
-    (newline)
-    (display (M_value_var (cadr dot) state class))
-    (newline)
-    (M_state (caddr dot) (append (M_value_var (cadr dot) state) state))))
+    (M_state (caddr dot) (append (M_value_var (cadr dot) state class) state) class)))
      
 ;M_value_dot
 (define M_value_dot
   (lambda (dot state class)
     (display '_dot_val)
-    (newline)
     (display dot)
-    (newline)
-    (display (M_value_var (cadr dot) state class))
-    (newline)
-    (display (caddr dot))
-    (newline)
-    (display (append (M_value_var (cadr dot) state class) state))
-    (newline)
     (M_value (caddr dot) (append (M_value_var (cadr dot) state class) state) class)))
 
 ;M_state_static_function
