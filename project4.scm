@@ -191,7 +191,7 @@
     (newline)
     (cond 
       ((and (null? state) (null? class)) (error 'Variable/function_not_declared))
-      ((null? (cdr state)) (M_value_var varname (M_state_dot (cons 'dot (cons class (list varname))) state '())))
+      ((and (null? (cdr state)) (not (null? class))) (M_value_var varname (M_state_dot (cons 'dot (cons class (list varname))) state '())))
       ((list? varname) (M_value_dot varname state class))
       (else
         ((lambda (varval)
@@ -489,7 +489,7 @@
   (lambda (dot state class)
     (display '_dot_val)
     (newline)
-    (display (cadr dot))
+    (display dot)
     (newline)
     (display (M_value_var (cadr dot) state class))
     (newline)
