@@ -181,7 +181,7 @@
     (cond 
       ((and (null? state) (null? class)) (error 'Variable/function_not_declared))
       ((list? varname) (M_value_dot varname state '()))
-      ;((and (null? (cdr state)) (not (null? class))) (M_value_var varname (M_state_dot (cons 'dot (cons class (list varname))) state class '())))
+      ((and (null? (cdr state))) (M_value_var_class varname state class))
       (else
         ((lambda (varval)
           (if (null? varval)
@@ -459,7 +459,7 @@
 ;M_value_dot
 (define M_value_dot
   (lambda (dot state class)
-    (M_value (caddr dot) (append (M_value_var (cadr dot) state class) state) class)))
+    (M_value (caddr dot) (M_value_var (cadr dot) state class) class)))
 
 ;M_state_static_function
 (define M_state_static_function_declaration
@@ -470,3 +470,8 @@
 (define M_state_static_var
   (lambda (stmt state class)
     (M_state_var stmt state class)))
+
+;M_value_var_class
+(define M_value_var_class
+  (lambda (varname state class)
+    (M_value_var varname (M_value_var class state class) class)))
