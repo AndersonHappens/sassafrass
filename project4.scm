@@ -5,8 +5,6 @@
 
 (load "classParser.scm")
 
-;state implemented as a list whose first element is the list of varnames, the second is the list of values
-
 ;parses and interprets the code in the given file
 (define interpret
   (lambda (filename className)
@@ -70,9 +68,6 @@
 (define M_state
   (lambda (stmt state class continue break return)
     ((lambda (stmt state class stmttype)
-       (display '_state:)
-       (display stmt)
-       (newline)
       (cond
         ((eq? stmttype 'var) (M_state_var stmt state class))
         ((eq? stmttype '=) (M_state_assign stmt state))
@@ -181,18 +176,12 @@
       (else (isdeclaredinlayer? varname (trimlayer layer))))))
     
 ;returns the value assigned to varname in the state
-(define M_value_var2
-  (lambda (varname state class)
-    (if (null? class)
-      ((M_state_dot (cons 'dot (cons class (list varname))) state '())))))
-
 (define M_value_var
   (lambda (varname state class)
-    (display '_val_var)
     (cond 
       ((and (null? state) (null? class)) (error 'Variable/function_not_declared))
-      ((list? varname) (M_value_dot varname state class))
-      ((and (null? (cdr state)) (not (null? class))) (M_value_var varname (M_state_dot (cons 'dot (cons class (list varname))) state '())))
+      ((list? varname) (M_value_dot varname state '()))
+      ;((and (null? (cdr state)) (not (null? class))) (M_value_var varname (M_state_dot (cons 'dot (cons class (list varname))) state class '())))
       (else
         ((lambda (varval)
           (if (null? varval)
@@ -225,11 +214,10 @@
 ; M_value, handles +,-,*,/,% and calls M_value_var if it finds a variable
 (define M_value
   (lambda (expression state class)
-    (display expression)
     (cond
       ((number? expression) expression)
-      ((or (eq? expression '#t) (eq? expression '#f)) (M_bool expression state))
-      ((or (eq? expression 'true) (eq? expression 'false)) (M_bool expression state))
+      ((or (eq? expression '#t) (eq? expression '#f)) (M_bool expression state class))
+      ((or (eq? expression 'true) (eq? expression 'false)) (M_bool expression state class))
       ((not (list? expression)) (M_value_var expression state class))
       ((eq? '+ (operator expression)) (+ (M_value (lOperand expression) state) (M_value (rOperand expression) state)))
       ((eq? '/ (operator expression)) (quotient (M_value (lOperand expression) state) (M_value (rOperand expression) state)))
@@ -238,12 +226,12 @@
       ((eq? '- (operator expression)) (- (M_value (lOperand expression) state) (M_value (rOperand expression) state)))
       ((eq? '* (operator expression)) (* (M_value (lOperand expression) state) (M_value (rOperand expression) state)))
       ((eq? 'funcall (operator expression)) (M_value_function_call expression state class))
-      ((eq? 'dot (operator expression)) (M_value_dot expression state))
-      (else (M_bool expression state)))))
+      ((eq? 'dot (operator expression)) (M_value_dot expression state class))
+      (else (M_bool expression state class)))))
 
 ; M_boolean, handles conditionals and equality ==, !=, <, >, <=, >=
 (define M_bool
-  (lambda (expression state)
+  (lambda (expression state class)
     (cond
       ((eq? expression '#t) #t)
       ((eq? expression '#f) #f)
@@ -251,14 +239,14 @@
       ((eq? 'false expression) #f)
       ((boolean? expression) expression)
       ((number? expression) '(not_a_bool)) 
-      ((not (list? expression)) (M_value_var expression state))
+      ((not (list? expression)) (M_value_var expression state class))
       ((eq? '== (operator expression)) (eq? (M_value (lOperand expression) state) (M_value (rOperand expression) state)))
       ((eq? '!= (operator expression)) (not (eq? (M_value (lOperand expression) state) (M_value (rOperand expression) state))))
       ((eq? '< (operator expression)) (< (M_value (lOperand expression) state) (M_value (rOperand expression) state)))
       ((eq? '> (operator expression)) (> (M_value (lOperand expression) state) (M_value (rOperand expression) state)))
       ((eq? '<= (operator expression)) (or (eq? (M_value (lOperand expression) state) (M_value (rOperand expression) state)) (< (M_value (lOperand expression) state) (M_value (rOperand expression) state))))
       ((eq? '>= (operator expression)) (or (eq? (M_value (lOperand expression) state) (M_value (rOperand expression) state)) (> (M_value (lOperand expression) state) (M_value (rOperand expression) state))))
-      ((eq? '&& (operator expression)) (and (M_bool (lOperand expression) state) (M_bool (rOperand expression) state)))
+      ((eq? '&& (operator expression)) (and (M_bool (lOperand expression) state class) (M_bool (rOperand expression) state class)))
       ((eq? '|| (operator expression)) (or (M_bool (lOperand expression) state) (M_bool (rOperand expression) state)))
       ((eq? '! (operator expression)) (not (M_bool (lOperand expression) state)))
       ((eq? 'funcall (operator expression)) (M_value_function_call expression state))
@@ -358,15 +346,9 @@
 ; creates the environment for functions to run in
 (define create_func_envi
   (lambda (name values state class)
-    (display name)
-    (newline)
-    (display values)
-    (newline)
-    (display state)
-    (newline)
     (cond
       ((list? name) (create_func_envi (caddr name) values (addvar (caddr name) (M_value_dot name state class) state) class))
-      ((isdeclaredinlayer? name (car state)) (addParams (func_param_names (M_value_var name state class)) values (addLayer (cons (pruneLayer name (car state)) (removeLayer state)))))
+      ((isdeclaredinlayer? name (car state)) (addParams (func_param_names (M_value_var name state class)) values (addLayer (cons (pruneLayer name (car state)) (removeLayer state))) class))
       (else (create_func_envi name values (removeLayer state))))))
 
 ; create_func_envi helpers
@@ -379,10 +361,10 @@
       (else   (pruneLayer name (trimlayer layer))))))
 ;adds the function parameters to the function state
 (define addParams
-  (lambda (names values state)
+  (lambda (names values state class)
     (cond
       ((null? names) state)
-      (else (addParams (cdr names) (cdr values) (addvar (car names) (M_value (car values) state) state))))))
+      (else (addParams (cdr names) (cdr values) (addvar (car names) (M_value (car values) state class) state) class)))))
         
 ; M_state_function_declaration
 ; creates the function closure and adds it to the state
@@ -425,22 +407,18 @@
 ; Returns the value of a function call
 (define M_value_function_call
   (lambda (funcCall state class)
-    (display '_func_call)
-             (newline)
-    (display funcCall)
-    (newline)
     (cond
       ((not (= (length (car (M_value_var (func_name funcCall) state class))) (length (func_param_values funcCall)))) (error 'Function_argument_mismatch))
-      ((list? (func_name funcCall)) (call/cc (lambda (return) (evaluate (func_code_list (M_value_dot (func_name funcCall) state class)) (create_func_envi (func_name funcCall) (param_values (func_param_values funcCall) state) state class) class (lambda (v) v) (lambda (v) v) return))))
+      ((list? (func_name funcCall)) (call/cc (lambda (return) (evaluate (func_code_list (M_value_dot (func_name funcCall) state class)) (create_func_envi (func_name funcCall) (param_values (func_param_values funcCall) state class) state class) class (lambda (v) v) (lambda (v) v) return))))
       (else (call/cc (lambda (return) (evaluate (func_code_list (M_value_var (func_name funcCall) state)) (create_func_envi (func_name funcCall) (param_values (func_param_values funcCall) state) state) (lambda (v) v) (lambda (v) v) return)))))))
 
 ; param_values
 ; calculates the parameter values for function calls
 (define param_values
-  (lambda (params state)
+  (lambda (params state class)
     (cond
       ((null? params) '())
-      (else (cons (M_value (car params) state) (param_values (cdr params) state))))))
+      (else (cons (M_value (car params) state class) (param_values (cdr params) state class))))))
 
 ; M_state_function_call
 ; Calls a function to change the state
@@ -476,14 +454,11 @@
 ;evaluates the dot expression
 (define M_state_dot
   (lambda (dot state class)
-    (display '_dot)
     (M_state (caddr dot) (append (M_value_var (cadr dot) state class) state) class)))
      
 ;M_value_dot
 (define M_value_dot
   (lambda (dot state class)
-    (display '_dot_val)
-    (display dot)
     (M_value (caddr dot) (append (M_value_var (cadr dot) state class) state) class)))
 
 ;M_state_static_function
