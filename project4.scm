@@ -70,15 +70,15 @@
     ((lambda (stmt state class stmttype)
       (cond
         ((eq? stmttype 'var) (M_state_var stmt state class))
-        ((eq? stmttype '=) (M_state_assign stmt state))
+        ((eq? stmttype '=) (M_state_assign stmt state class))
         ((eq? stmttype 'return) (M_state_return stmt state class return))
-        ((eq? stmttype 'if) (M_state_if stmt state continue break return))
-        ((eq? stmttype 'while) (M_state_while stmt state return))
-        ((eq? stmttype 'begin) (M_state_block stmt state continue break return))
-        ((eq? stmttype 'break) (M_state_break state break))
-        ((eq? stmttype 'continue) (M_state_continue state continue))
+        ((eq? stmttype 'if) (M_state_if stmt state continue break return class))
+        ((eq? stmttype 'while) (M_state_while stmt state return class))
+        ((eq? stmttype 'begin) (M_state_block stmt state continue break return class))
+        ((eq? stmttype 'break) (M_state_break state break class))
+        ((eq? stmttype 'continue) (M_state_continue state continue class))
         ((eq? stmttype 'function) (M_state_function_declaration stmt state))
-        ((eq? stmttype 'funcall) (M_state_function_call stmt state))
+        ((eq? stmttype 'funcall) (M_state_function_call stmt state class))
         ((eq? stmttype 'class) (M_state_class stmt state))
         ((eq? stmttype 'static-var) (M_state_static_var stmt state class))
         ((eq? stmttype 'static-function) (M_state_static_function_declaration stmt state))
@@ -241,16 +241,16 @@
       ((boolean? expression) expression)
       ((number? expression) '(not_a_bool)) 
       ((not (list? expression)) (M_value_var expression state class))
-      ((eq? '== (operator expression)) (eq? (M_value (lOperand expression) state) (M_value (rOperand expression) state)))
-      ((eq? '!= (operator expression)) (not (eq? (M_value (lOperand expression) state) (M_value (rOperand expression) state))))
-      ((eq? '< (operator expression)) (< (M_value (lOperand expression) state) (M_value (rOperand expression) state)))
-      ((eq? '> (operator expression)) (> (M_value (lOperand expression) state) (M_value (rOperand expression) state)))
-      ((eq? '<= (operator expression)) (or (eq? (M_value (lOperand expression) state) (M_value (rOperand expression) state)) (< (M_value (lOperand expression) state) (M_value (rOperand expression) state))))
-      ((eq? '>= (operator expression)) (or (eq? (M_value (lOperand expression) state) (M_value (rOperand expression) state)) (> (M_value (lOperand expression) state) (M_value (rOperand expression) state))))
+      ((eq? '== (operator expression)) (eq? (M_value (lOperand expression) state class) (M_value (rOperand expression) state class)))
+      ((eq? '!= (operator expression)) (not (eq? (M_value (lOperand expression) state class) (M_value (rOperand expression) state class))))
+      ((eq? '< (operator expression)) (< (M_value (lOperand expression) state class) (M_value (rOperand expression) state class)))
+      ((eq? '> (operator expression)) (> (M_value (lOperand expression) state class) (M_value (rOperand expression) state class)))
+      ((eq? '<= (operator expression)) (or (eq? (M_value (lOperand expression) state class) (M_value (rOperand expression) state class)) (< (M_value (lOperand expression) state class) (M_value (rOperand expression) state class))))
+      ((eq? '>= (operator expression)) (or (eq? (M_value (lOperand expression) state class) (M_value (rOperand expression) state class)) (> (M_value (lOperand expression) state class) (M_value (rOperand expression) state class))))
       ((eq? '&& (operator expression)) (and (M_bool (lOperand expression) state class) (M_bool (rOperand expression) state class)))
-      ((eq? '|| (operator expression)) (or (M_bool (lOperand expression) state) (M_bool (rOperand expression) state)))
-      ((eq? '! (operator expression)) (not (M_bool (lOperand expression) state)))
-      ((eq? 'funcall (operator expression)) (M_value_function_call expression state))
+      ((eq? '|| (operator expression)) (or (M_bool (lOperand expression) state class) (M_bool (rOperand expression) state class)))
+      ((eq? '! (operator expression)) (not (M_bool (lOperand expression) state class)))
+      ((eq? 'funcall (operator expression)) (M_value_function_call expression state class))
       ((eq? 'dot (operator expression)) (M_value_dot expression state))
       (else '(not_a_bool)))))
           
@@ -267,11 +267,11 @@
 
 ;M_state_if
 (define M_state_if
-  (lambda (ifBlock state continue break return)
+  (lambda (ifBlock state continue break return class)
     (cond
-      ((M_bool (condition ifBlock) state) (M_state (ifStmt ifBlock) state continue break return))
+      ((M_bool (condition ifBlock) state class) (M_state (ifStmt ifBlock) state continue break return class))
       ((noElseStmt ifBlock) state)
-      (else (M_state (elseStmt ifBlock) state continue break return)))))
+      (else (M_state (elseStmt ifBlock) state continue break return class)))))
 
 ; misc definitions for M_state_if
 (define condition
@@ -292,9 +292,9 @@
 
 ;M_state_assign
 (define M_state_assign
-  (lambda (assignment state)
+  (lambda (assignment state class)
     (if (isdeclared? (varName assignment) state)
-      (updatevar (varName assignment) (M_value (expr assignment) state) state)
+      (updatevar (varName assignment) (M_value (expr assignment) state class) state)
       (error 'Variable/Function_not_declared))))
 
 ; misc definitions for M_state_assign
@@ -326,8 +326,8 @@
 
 ;M_state_block, handles block statements
 (define M_state_block
-  (lambda (stmt state continue break return)
-    (removeLayer (evaluate (cdr stmt) (addLayer state) (lambda (v) (continue (removeLayer v))) (lambda (v) (break (removeLayer v))) return))))
+  (lambda (stmt state continue break return class)
+    (removeLayer (evaluate (cdr stmt) (addLayer state) (lambda (v) (continue (removeLayer v))) (lambda (v) (break (removeLayer v))) return class))))
 
 ;M_state_break, handles break
 ; the break that is passed in is a continuation function from the call/cc on line 287 int M_state_while,
@@ -424,8 +424,8 @@
 ; M_state_function_call
 ; Calls a function to change the state
 (define M_state_function_call
-  (lambda (funcCall state)
-    (append (evaluate (func_code_list (M_value_var (func_name funcCall) state)) (create_func_envi (func_name funcCall) (param_values (func_param_values funcCall) state) state) (lambda (v) v) (lambda (v) v) (lambda (v) state)) (cdr state))))
+  (lambda (funcCall state class)
+    (append (evaluate (func_code_list (M_value_var (func_name funcCall) state class)) (create_func_envi (func_name funcCall) (param_values (func_param_values funcCall) state class) state class) (lambda (v) v) (lambda (v) v) (lambda (v) state) class) (cdr state))))
 
 ;M_state_class
 ;adds a class definition to the state
