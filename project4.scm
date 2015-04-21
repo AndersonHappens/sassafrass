@@ -415,16 +415,14 @@
       ((list? (func_name funcCall)) (call/cc (lambda (return) (evaluate (func_code_list (M_value_dot (func_name funcCall) state class exception)) (create_func_envi (func_name funcCall) (param_values (func_param_values funcCall) state class exception) state class exception) class (lambda (v) v) (lambda (v) v) return exception))))
       (else (call/cc (lambda (return) (evaluate (func_code_list (M_value_var (func_name funcCall) state class exception)) (create_func_envi (func_name funcCall) (param_values (func_param_values funcCall) state class exception) state class exception) (lambda (v) v) (lambda (v) v) return exception)))))))
 
-;get_function
-;finds the class where a function is defined and makes the function call
+;gets the function definition
 (define get_function
   (lambda (funcCall state class exception)
-    (if (list? (func_name funcCall));if in form of a dot expression make the call, otherwise put as a dot call with the class the function is defined in
+    (if (list? (func_name funcCall));indicates that there's a dot call
         (M_value_function_call funcCall state class exception)
         (M_value_function_call (append (list 'funcall (list 'dot (find_defining_class (func_name funcCall) state class exception) (func_name funcCall))) (func_param_values funcCall)) state class exception))))
 
-;find_defining_class
-;finds in what class something is declared, tracing up supers
+;finds the class that the function is defined in.  May be the current class or a superclass of the current class
 (define find_defining_class
   (lambda (name state class exception)
     (cond
@@ -458,6 +456,7 @@
   (lambda (class)
     (cadr class)))
 
+;gets the superClass of a class from the class definition
 (define superClass
   (lambda (class)
     ((lambda (super)
@@ -466,6 +465,7 @@
            (cadr super)))
     (caddr class))))
 
+;gets the body of a class from the class definition
 (define classBody
   (lambda (class)
     (cadddr class)))
@@ -512,6 +512,7 @@
       (M_value_var class state class exception))))
 
 ;M_state_try
+;M_state function for try constructs
 (define M_state_try
   (lambda (try state class continue break return oldException)
     ((lambda (try catch finally)
@@ -527,6 +528,7 @@
                                                                                                class continue break return oldException))))))
      (tryBlock try) (catchBlock try) (finallyBlock try))))
 
+;helpers for try
 (define tryBlock
   (lambda (try)
     (cons 'begin (cadr try))))
@@ -543,10 +545,15 @@
         '()
          (cons 'begin (cadar(cdddr try))))))
 
+;M_state_catch
+;the M_state function for evaluating catch blocks
+;ex is the value of the exception
 (define M_state_catch
   (lambda (ex catch state class continue break return exception)
     (removeLayer (M_state catch (addvar 'e ex (addLayer state)) class continue break return exception))))
 
+;M_state_throw
+;handles the throw statement by calling the exception continuation
 (define M_state_throw
   (lambda (e state class exception)
     (exception (M_value (cadr e) state class (lambda (v) v)))))
