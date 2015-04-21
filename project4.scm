@@ -82,7 +82,7 @@
         ((eq? stmttype 'class) (M_state_class stmt state))
         ((eq? stmttype 'static-var) (M_state_static_var stmt state class exception))
         ((eq? stmttype 'static-function) (M_state_static_function_declaration stmt state))
-        ((eq? stmttype 'try) (M_state_try stmt state class continue break return))
+        ((eq? stmttype 'try) (M_state_try stmt state class continue break return exception))
         ((eq? stmttype 'throw) (M_state_throw stmt state class exception))
         (else (error 'Invalid_stmt_type stmt))))
       stmt state class (stmttype stmt))))
@@ -507,19 +507,18 @@
 
 ;M_state_try
 (define M_state_try
-  (lambda (try state class continue break return)
+  (lambda (try state class continue break return oldException)
     ((lambda (try catch finally)
       (cond
         ((and (null? finally) (null? catch)) (call/cc (lambda (exception) (M_state try state class continue break return exception))))
         ((and (null? finally) (not (null? catch))) (call/cc (lambda (exception) (M_state try state class continue break return (lambda (e)
-                                                                                                                                        ((lambda (ex)
-                                                                                                                                          (M_state_catch ex catch state class continue break return))
-                                                                                                                                         (exception e)))))))
-        ((and (not (null? finally)) (null? catch)) (M_state finally (call/cc (lambda (exception) (M_state try state class continue break return exception))) class continue break return (lambda (v) v)))
-        ((and (not (null? finally)) (not (null? catch))) (M_state finally (call/cc (lambda (exception) (M_state try state class continue break return exception))) class continue break return (lambda (e)
-                                                                                                                                        ((lambda (ex)
-                                                                                                                                          (M_state_catch ex catch state class continue break return))
-                                                                                                                                         (exception e)))))))
+                                                                                                                                 (exception
+                                                                                                                                  (M_state_catch e catch state class continue break return oldException)))))))
+        ((and (not (null? finally)) (null? catch)) (M_state finally (call/cc (lambda (exception) (M_state try state class continue break return exception))) class continue break return oldExCeption))
+        ((and (not (null? finally)) (not (null? catch))) (call/cc (lambda (exception) (M_state finally (M_state try state class continue break return (lambda (e)
+                                                                                                                                                        (exception
+                                                                                                                                                         (M_state finally (M_state_catch e catch state class continue break return oldException) class continue break return oldException))))
+                                                                                               class continue break return oldException))))))
      (tryBlock try) (catchBlock try) (finallyBlock try))))
 
 (define tryBlock
@@ -539,8 +538,8 @@
          (cons 'begin (cadar(cdddr try))))))
 
 (define M_state_catch
-  (lambda (ex catch state class continue break return)
-    (removeLayer (M_state catch (addVar 'e ex (addLayer state)) class continue break return exception))))
+  (lambda (ex catch state class continue break return exception)
+    (removeLayer (M_state catch (addvar 'e ex (addLayer state)) class continue break return exception))))
 
 (define M_state_throw
   (lambda (e state class exception)
