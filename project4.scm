@@ -180,16 +180,20 @@
 (define M_value_var
   (lambda (varname state class exception)
     (cond 
-      ((or (null? state) (null? class)) (error 'Variable/function_not_declared))
+      ((or (null? state) (null? class)) (error 'Variable/function_not_declared_in_scope))
       ((and (list? varname) (eq? 'dot (car varname))) (M_value_dot varname state class exception))
       (else
+       ((lambda (varval2)
+          (if(null? varval2)
+             (error 'Variable/function_not_declared_in_scope)
+             varval2))
         ((lambda (varval)
            (if (null? varval)
               (if (and (null? (cdr state)) (not (eq? varname class)))
                   (M_value_var_class varname state class exception)
                   (M_value_var varname (removeLayer state) class exception))
               varval))
-         (M_value_var_layer varname (topLayer state)))))))
+         (M_value_var_layer varname (topLayer state))))))))
 
 ;helper method for M_value_var, returns the value assigned to varname in a layer, or null if the variable does not exist in that layer
 (define M_value_var_layer
