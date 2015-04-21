@@ -480,7 +480,9 @@
 ;M_value_dot
 (define M_value_dot
   (lambda (dot state class exception)
-    (M_value (caddr dot) (M_value_var (cadr dot) state class exception) class exception)))
+    (if (eq? 'super (cadr dot))
+         (M_value (caddr dot) (M_value_var (M_value_var 'super (M_value_var class state class exception) class exception) state class exception) class exception)
+         (M_value (caddr dot) (M_value_var (cadr dot) state class exception) class exception))))
 
 ;M_state_static_function
 (define M_state_static_function_declaration
