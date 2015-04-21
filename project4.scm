@@ -415,10 +415,10 @@
       ((list? (func_name funcCall)) (call/cc (lambda (return) (evaluate (func_code_list (M_value_dot (func_name funcCall) state class exception)) (create_func_envi (func_name funcCall) (param_values (func_param_values funcCall) state class exception) state class exception) class (lambda (v) v) (lambda (v) v) return exception))))
       (else (call/cc (lambda (return) (evaluate (func_code_list (M_value_var (func_name funcCall) state class exception)) (create_func_envi (func_name funcCall) (param_values (func_param_values funcCall) state class exception) state class exception) (lambda (v) v) (lambda (v) v) return exception)))))))
 
-;gets the function definition
+;find the function definition and makes a function call
 (define get_function
   (lambda (funcCall state class exception)
-    (if (list? (func_name funcCall));indicates that there's a dot call
+    (if (list? (func_name funcCall));if it's a dot call, make the call, else make a dot call after finding the definition
         (M_value_function_call funcCall state class exception)
         (M_value_function_call (append (list 'funcall (list 'dot (find_defining_class (func_name funcCall) state class exception) (func_name funcCall))) (func_param_values funcCall)) state class exception))))
 
