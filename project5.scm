@@ -14,7 +14,7 @@
 ;parses and interprets the code in the given file
 (define interpret
   (lambda (filename className)
-    (evaluate (append (parser filename) (mainCall className)) (newEnvironment) className (lambda (v) v) (lambda (v) v) (lambda (v) v) (lambda (v) v))))
+    (evaluate (append (parser filename) (mainCall (string->symbol className))) (newEnvironment) (string->symbol className) (lambda (v) v) (lambda (v) v) (lambda (v) v) (lambda (v) v))))
 ;lambda (v) v as placeholders for continue, break, and return, acts as do nothing until in a loop or function.
 
 ;evaluate the parse tree
