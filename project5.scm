@@ -8,8 +8,6 @@
 ;***************************************************************************************************************************************
 ;PARSE, INTERPRET, AND EVALUATE
 ;***************************************************************************************************************************************
-; state ( [function/if/while blocks [classname='()] (className (var names)(var values [may be a state itself]) (functionNames) (funcDefs)) [super classes...] ) runtime
-; classes ((className superClassName (var names) (initial var values) (function names) (func defs) (static var names) (static var values) (static function names) (static function defs) [more classes])
 
 ;parses and interprets the code in the given file
 (define interpret
@@ -479,6 +477,7 @@
       ((eq? '* (operator expression)) (* (M_value (lOperand expression) state class exception) (M_value (rOperand expression) state class exception)))
       ((eq? 'funcall (operator expression)) (get_function expression state class exception))
       ((eq? 'dot (operator expression)) (M_value_dot expression state class exception))
+      ((eq? 'new (operator expression)) (M_value_var (cadr expression) state class exception))
       (else (M_bool expression state class exception)))))
 
 ; M_boolean, handles conditionals and equality ==, !=, <, >, <=, >=
