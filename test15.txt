@@ -1,29 +1,29 @@
-class Pow {
-  static function main() {
-    var result;
-    var base;
+class List {
+  var val;
+  var next;
 
-    function getpow(a) {
-       var x;
+  function getNext() {
+    return next;
+  }
 
-       function setanswer(n) {
-          result = n;
-       }
-
-       function recurse(m) {
-         if (m > 0) {
-           x = x * base;
-           recurse(m-1);
-         }
-         else
-           setanswer(x);
-       }
-
-       x = 1;
-       recurse(a);
+  function setNext(x) {
+    if (x == 0)
+      next = 0;
+    else {
+      next = new List();
+      next.setVal(val+1);
+      next.setNext(x-1);
     }
-    base = 2;
-    getpow(6);
-    return result;
+  }
+
+  function setVal(x) {
+    val = x;
+  }
+
+  static function main() {
+    var l = new List();
+    l.setVal(10);
+    l.setNext(5);
+    return l.getNext().getNext().getNext().getNext().getNext().val;
   }
 }

@@ -1,12 +1,23 @@
 class A {
-  static var x = true;
-  static var y = false;
+  static var a = 1;
+  static var b = 10;
 
-  static function and(a, b) {
-    return a && b;
+  static function getSum() {
+    return a + b;
   }
+}
 
+class B {
   static function main() {
-    return A.and(A.x, A.y);
+    A.a = 5;
+
+    return A.getSum() + C.x + C.timesX(A.a);
+  }
+}
+
+class C {
+  static var x = 100;
+  static function timesX(a) {
+    return a * x;
   }
 }

@@ -1,20 +1,13 @@
 class A {
-  static var a = 1;
-  static var b = 20;
-}
 
-class B extends A {
-  static var c = 300;
+  var x = 100;
 
-  static function main() {
-    return a + b + c + d;
+  function add(x) {
+    return this.x + x;
   }
-}
-
-class C extends B {
-  static var d = 4000;
 
   static function main() {
-    return a + b + c + d;
+    var a = new A();
+    return a.add(25);
   }
 }
