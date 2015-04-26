@@ -5,7 +5,7 @@
 
 (load "classParser.scm")
 
-; state ( [function/if/while blocks [classname='()] (className (var names)(var values [may be a state itself]) (functionNames) (funcDefs)) [super classes...] )
+; state ( [function/if/while blocks [classname='()] (className (var names)(var values [may be a state itself]) (functionNames) (funcDefs)) [super classes...] ) runtime
 ; classes ((className superClassName (var names) (initial var values) (function names) (func defs) (static var names) (static var values) (static function names) (static function defs) [more classes])
 
 ;parses and interprets the code in the given file
@@ -75,7 +75,7 @@
         ((eq? stmttype 'var) (M_state_var stmt state class exception))
         ((eq? stmttype '=) (M_state_assign stmt state class exception))
         ((eq? stmttype 'return) (M_state_return stmt state class return exception))
-        ((eq? stmttype 'if) (M_state_if stmt state continue break return class exception))
+        ((eq? stmttype 'if) (M_state_if stmt state class continue break return exception))
         ((eq? stmttype 'while) (M_state_while stmt state class return exception))
         ((eq? stmttype 'begin) (M_state_block stmt state class continue break return exception))
         ((eq? stmttype 'break) (M_state_break state break))
