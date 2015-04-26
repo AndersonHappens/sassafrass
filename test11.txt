@@ -1,15 +1,24 @@
 class A {
-  static var total = 0;
 
-  static function sum(x) {
-    if (x > 0) {
-      total = total + x;
-      sum(x - 1);
-    }
+  var x = 100;
+
+  function setX(x) {
+    this.x = x;
+  }
+
+  function getX() {
+    return this.x;
+  }
+
+  function add(a) {
+    return a.getX() + this.getX();
   }
 
   static function main() {
-    sum(5);
-    return total;
+    var a1 = new A();
+    var a2 = new A();
+    a1.setX(50);
+    a2.setX(4);
+    return a1.add(a2);
   }
 }

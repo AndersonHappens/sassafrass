@@ -1,13 +1,16 @@
 ; Jake Anderson, jta40
 ; Joseph Tate, jgt17
 ; Michael Volkovitsch, mtv25
-; EECS 345, Project 4
+; EECS 345, Project 5
 
 (load "classParser.scm")
 
 ;***************************************************************************************************************************************
 ;PARSE, INTERPRET, AND EVALUATE
 ;***************************************************************************************************************************************
+; state ( [function/if/while blocks [classname='()] (className (var names)(var values [may be a state itself]) (functionNames) (funcDefs)) [super classes...] ) runtime
+; classes ((className superClassName (var names) (initial var values) (function names) (func defs) (static var names) (static var values) (static function names) (static function defs) [more classes])
+
 ;parses and interprets the code in the given file
 (define interpret
   (lambda (filename className)
@@ -31,6 +34,7 @@
 ;***************************************************************************************************************************************
 ;STATE AND ENVIRONMENT MANIPULATION
 ;***************************************************************************************************************************************
+
 ;defines the newEnvironment consisting of 1 layer in a list
 (define newEnvironment
   (lambda ()
@@ -161,6 +165,7 @@
                            (boolReturnHelper v)
                            v))
                      (M_value (cadr exp) s class exception)))))))
+
 
 ;returns the current statement (car of the statement list)
 (define firststmt
@@ -541,8 +546,6 @@
       ((and (eq? varname (firstvarname layer)) (null? (firstvarvalue layer))) (error 'Variable_not_initialized))
       ((eq? varname (firstvarname layer)) (firstvarvalue layer))
       (else (M_value_var_layer varname (trimlayer layer))))))
-
-
 
 (define firstvarname
   (lambda (layer)
