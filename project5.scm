@@ -1,9 +1,12 @@
 ; Jake Anderson, jta40
 ; Joseph Tate, jgt17
 ; Michael Volkovitsch, mtv25
-; EECS 345, Project 4
+; EECS 345, Project 5
 
 (load "classParser.scm")
+
+; state ( [function/if/while blocks [classname='()] (className (var names)(var values [may be a state itself]) (functionNames) (funcDefs)) [super classes...] )
+; classes ((className superClassName (var names) (initial var values) (function names) (func defs) (static var names) (static var values) (static function names) (static function defs) [more classes])
 
 ;parses and interprets the code in the given file
 (define interpret
