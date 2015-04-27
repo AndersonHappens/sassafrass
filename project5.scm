@@ -236,10 +236,10 @@
 ;***************************************************************************************************************************************
 (define M_state_assign
   (lambda (assignment state class exception)
-    (display state)
-    (newline)
-    (display (varName assignment))
-    (newline)
+;    (display state)
+ ;   (newline)
+  ;  (display (varName assignment))
+   ; (newline)
     (if (isdeclared? (varName assignment) state)
       (updatevar (varName assignment) (M_value (expr assignment) state class exception) state)
       (error 'Variable/Function_not_declared))))
@@ -611,9 +611,9 @@
 ;M_value_dot
 (define M_value_dot
   (lambda (dot state class exception)
-    (display 'bottom:)
-    (display (bottomLayer state))
-    (newline)
+    ;(display 'bottom:)
+    ;(display (bottomLayer state))
+    ;(newline)
     (cond
       ((eq? 'this (cadr dot)) (M_value (caddr dot) state class exception))
       ((eq? 'super (cadr dot)) (M_value (caddr dot) (append (cdr (M_value_var class state class exception)) (bottomLayer state)) class exception))
@@ -629,6 +629,7 @@
 (define M_value_var_class
   (lambda (varname state class exception)
     (display varname)
+    (newline)
     ((lambda (classEnvi)
       (if (isdeclared? varname classEnvi)
         (M_value_var varname classEnvi class exception)
