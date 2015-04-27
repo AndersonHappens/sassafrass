@@ -394,8 +394,8 @@
 (define classEniv
   (lambda (class state)
     (if (eq? 'none (superClass class))
-        (evaluate (classBody class) (addLayer (newEnvironment)) (className class) (lambda (v) v) (lambda (v) v) (lambda (v) v) (lambda (v) v))
-        (evaluate (classBody class) (addLayer (M_value_var (superClass class) state (className class) (lambda (v) v))) (className class) (lambda (v) v) (lambda (v) v) (lambda (v) v) (lambda (v) v)))))
+        (evaluate (classBody class) (newEnvironment) (className class) (lambda (v) v) (lambda (v) v) (lambda (v) v) (lambda (v) v))
+        (evaluate (classBody class) (addLayer (append (M_value_var (superClass class) state (className class) (lambda (v) v)) (bottomLayer state))) (className class) (lambda (v) v) (lambda (v) v) (lambda (v) v) (lambda (v) v)))))
 
 ;M_state_dot
 ;evaluates the dot expression
