@@ -81,7 +81,7 @@
 (define create_func_envi
   (lambda (name values state class exception)
     (cond
-      ((list? name) (create_func_envi (caddr name) values (addvar (caddr name) (M_value_dot name state class exception) state) class exception))
+      ((list? name) (create_func_envi (caddr name) values (addvar (caddr name) (M_value_dot name state class exception) (append (M_value (cadr name) state class exception) state)) class exception))
       ((isdeclaredinlayer? name (car state)) (addParams (func_param_names (M_value_var name state class exception)) values (addLayer (cons (pruneLayer name (car state)) (removeLayer state))) class exception))
       (else (create_func_envi name values (removeLayer state) class exception)))))
 
@@ -236,6 +236,10 @@
 ;***************************************************************************************************************************************
 (define M_state_assign
   (lambda (assignment state class exception)
+    (display state)
+    (newline)
+    (display (varName assignment))
+    (newline)
     (if (isdeclared? (varName assignment) state)
       (updatevar (varName assignment) (M_value (expr assignment) state class exception) state)
       (error 'Variable/Function_not_declared))))
@@ -356,7 +360,7 @@
 ; Calls a function to change the state
 (define M_state_function_call
   (lambda (funcCall state class exception)
-    (append (evaluate (func_code_list (M_value_var (func_name funcCall) state class exception)) (create_func_envi (func_name funcCall) (param_values (func_param_values funcCall) state class exception) state class exception) (lambda (v) v) (lambda (v) v) (lambda (v) state) class exception) (cdr state))))
+    (append (evaluate (func_code_list (M_value_var (func_name funcCall) state class exception)) (create_func_envi (func_name funcCall) (param_values (func_param_values funcCall) state class exception) state class exception) class (lambda (v) v) (lambda (v) v) (lambda (v) state) exception) (cdr state))))
 
 ;***************************************************************************************************************************************
 ; M_STATE_CLASS
@@ -523,6 +527,15 @@
 ;returns the value assigned to varname in the state
 (define M_value_var
   (lambda (varname state class exception)
+    (display "Varname: ")
+    (display varname)
+    (newline)
+    (display "State: ")
+    (display state)
+    (newline)
+    (display "Class: ")
+    (display class)
+    (newline)
     (cond 
       ((or (null? state) (null? class)) (error 'Variable/function_not_declared_in_scope))
       ((and (list? varname) (eq? 'dot (car varname))) (M_value_dot varname state class exception))
@@ -565,7 +578,7 @@
   (lambda (funcCall state class exception)
     (cond
       ((not (= (length (car (M_value_var (func_name funcCall) state class exception))) (length (func_param_values funcCall)))) (error 'Function_argument_mismatch))
-      ((list? (func_name funcCall)) (call/cc (lambda (return) (evaluate (func_code_list (M_value_dot (func_name funcCall) state class exception)) (create_func_envi (func_name funcCall) (param_values (func_param_values funcCall) state class exception) state class exception) class (lambda (v) v) (lambda (v) v) return exception))))
+      ((list? (func_name funcCall)) (call/cc (lambda (return) (evaluate (func_code_list (M_value_dot (func_name funcCall) state class exception)) (create_func_envi (func_name funcCall) (param_values (func_param_values funcCall) state class exception) state class exception) (cadr (func_name funcCall)) (lambda (v) v) (lambda (v) v) return exception))))
       (else (call/cc (lambda (return) (evaluate (func_code_list (M_value_var (func_name funcCall) state class exception)) (create_func_envi (func_name funcCall) (param_values (func_param_values funcCall) state class exception) state class exception) (lambda (v) v) (lambda (v) v) return exception)))))))
 
 ;find the function definition and makes a function call
@@ -600,12 +613,13 @@
   (lambda (dot state class exception)
     (cond
       ((eq? 'this (cadr dot)) (M_value (caddr dot) state class exception))
-      ((eq? 'super (cadr dot)) (M_value (caddr dot) (M_value_var (M_value_var 'super (M_value_var class state class exception) class exception) state class exception) class exception))
+      ((eq? 'super (cadr dot)) (M_value (caddr dot) (M_value_var 'super (M_value_var class state class exception) class exception) class exception))
       (else (M_value (caddr dot) (M_value_var (cadr dot) state class exception) class exception)))))
 
 ;M_value_var_class
 (define M_value_var_class
   (lambda (varname state class exception)
+    (display varname)
     ((lambda (classEnvi)
       (if (isdeclared? varname classEnvi)
         (M_value_var varname classEnvi class exception)
