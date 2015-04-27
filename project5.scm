@@ -246,9 +246,12 @@
     ;(newline)
     (cond
       ((isdeclared? (varName assignment) state)(updatevar (varName assignment) (M_value (expr assignment) state class exception) state))
-      ((and (eq? 'this (cadr (varName assignment))) (isdeclared? (caddr (varName assignment)) state)) (updatevar (caddr (varName assignment)) (M_value (caddr (varName assignment)) state class exception) state))
+      ((and (eq? 'this (cadr (varName assignment))) (isdeclared? (caddr (varName assignment)) state)) (updatevar (caddr (varName assignment)) (M_value (expr assignment) state class exception) state))
+      ((and (isdeclared? (cadr (varName assignment)) state) (isdeclared? (caddr (varName assignment)) (M_value (cadr (varName assignment)) state class exception))) 
+       (begin (updatevar (caddr (varName assignment)) (M_value (expr assignment) state class exception) (M_value (cadr (varName assignment)) state class exception)) 
+              state))
       (else (error 'Variable/Function_not_declared)))))
-
+;(M_value (caddr (varName assignment)) (M_value (cadr (varName assignment)) state class exception) class exception)
 ; misc definitions for M_state_assign
 (define varName
   (lambda (l)
@@ -488,7 +491,7 @@
       ((eq? '* (operator expression)) (* (M_value (lOperand expression) state class exception) (M_value (rOperand expression) state class exception)))
       ((eq? 'funcall (operator expression)) (get_function expression state class exception))
       ((eq? 'dot (operator expression)) (M_value_dot expression state class exception))
-      ((eq? 'new (operator expression)) (M_value_var (cadr expression) state class exception))
+      ((eq? 'new (operator expression)) (M_value_var (cadr expression) state (cadr expression) exception))
       (else (M_bool expression state class exception)))))
 
 ; M_boolean, handles conditionals and equality ==, !=, <, >, <=, >=
@@ -644,5 +647,6 @@
           (if (eq? super 'none)
             '()
             (M_value_var_class varname state super exception)))
-         (M_value_var 'super classEnvi class exception))))
-      (M_value_var class state class exception))))
+         (cdr (M_value_var varname classEnvi class exception)))))
+         ;(M_value_var 'super classEnvi class exception))))
+      (M_value_var class state class exception)))) ; is this supposed to be 
