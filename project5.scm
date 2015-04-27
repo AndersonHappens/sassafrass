@@ -634,7 +634,8 @@
 ;M_value_var_class
 (define M_value_var_class
   (lambda (varname state class exception)
-    ;(display varname)
+    (display varname)
+    (newline)
     ((lambda (classEnvi)
       (if (isdeclared? varname classEnvi)
         (M_value_var varname classEnvi class exception)
