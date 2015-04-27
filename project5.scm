@@ -73,6 +73,9 @@
       ((eq? name (firstvarname layer)) layer)
       (else   (pruneLayer name (trimlayer layer))))))
 
+(define test
+  (lambda ()
+      (and (not (null? '())) (null? (cdr '())))))
 ;***************************************************************************************************************************************
 ; FUNCTION ENVIRONMENT
 ;***************************************************************************************************************************************
@@ -81,6 +84,7 @@
 (define create_func_envi
   (lambda (name values state class exception)
     (cond
+      ((and (list? name) (eq? 'super (cadr name))) (create_func_envi (caddr name) values (addvar (caddr name) (M_value_dot name state class exception) (cdr state)) class exception))
       ((list? name) (create_func_envi (caddr name) values (addvar (caddr name) (M_value_dot name state class exception) (append (M_value (cadr name) state class exception) state)) class exception))
       ((isdeclaredinlayer? name (car state)) (addParams (func_param_names (M_value_var name state class exception)) values (addLayer (cons (pruneLayer name (car state)) (removeLayer state))) class exception))
       (else (create_func_envi name values (removeLayer state) class exception)))))
@@ -236,10 +240,10 @@
 ;***************************************************************************************************************************************
 (define M_state_assign
   (lambda (assignment state class exception)
-    (display state)
-    (newline)
-    (display (varName assignment))
-    (newline)
+    ;(display state)
+    ;(newline)
+    ;(display (varName assignment))
+    ;(newline)
     (if (isdeclared? (varName assignment) state)
       (updatevar (varName assignment) (M_value (expr assignment) state class exception) state)
       (error 'Variable/Function_not_declared))))
@@ -527,15 +531,15 @@
 ;returns the value assigned to varname in the state
 (define M_value_var
   (lambda (varname state class exception)
-    (display "Varname: ")
-    (display varname)
-    (newline)
-    (display "State: ")
-    (display state)
-    (newline)
-    (display "Class: ")
-    (display class)
-    (newline)
+    ;(display "Varname: ")
+    ;(display varname)
+    ;(newline)
+    ;(display "State: ")
+    ;(display state)
+    ;(newline)
+    ;(display "Class: ")
+    ;(display class)
+    ;(newline)
     (cond 
       ((or (null? state) (null? class)) (error 'Variable/function_not_declared_in_scope))
       ((and (list? varname) (eq? 'dot (car varname))) (M_value_dot varname state class exception))
@@ -578,8 +582,10 @@
   (lambda (funcCall state class exception)
     (cond
       ((not (= (length (car (M_value_var (func_name funcCall) state class exception))) (length (func_param_values funcCall)))) (error 'Function_argument_mismatch))
+      ((and (list? (func_name funcCall)) (not (eq? (cadr (func_name funcCall)) 'super))) (call/cc (lambda (return) (evaluate (func_code_list (M_value_dot (func_name funcCall) state class exception)) (create_func_envi (func_name funcCall) (param_values (func_param_values funcCall) state class exception) state class exception) (cadr (func_name funcCall)) (lambda (v) v) (lambda (v) v) return exception))))
+      ;FIX THE FOLLOWING LINE FOR TEST 12, what should we do to get a super function call??
       ((list? (func_name funcCall)) (call/cc (lambda (return) (evaluate (func_code_list (M_value_dot (func_name funcCall) state class exception)) (create_func_envi (func_name funcCall) (param_values (func_param_values funcCall) state class exception) state class exception) (cadr (func_name funcCall)) (lambda (v) v) (lambda (v) v) return exception))))
-      (else (call/cc (lambda (return) (evaluate (func_code_list (M_value_var (func_name funcCall) state class exception)) (create_func_envi (func_name funcCall) (param_values (func_param_values funcCall) state class exception) state class exception) (lambda (v) v) (lambda (v) v) return exception)))))))
+      (else (call/cc (lambda (return) (evaluate (func_code_list (M_value_var (func_name funcCall) state class exception)) (create_func_envi (func_name funcCall) (param_values (func_param_values funcCall) state class exception) state class exception) class (lambda (v) v) (lambda (v) v) return exception))))))) ;never calls this line... or it will infinite loop because evaluating same class and things
 
 ;find the function definition and makes a function call
 (define get_function
@@ -611,9 +617,9 @@
 ;M_value_dot
 (define M_value_dot
   (lambda (dot state class exception)
-    (display 'bottom:)
-    (display (bottomLayer state))
-    (newline)
+    ;(display 'bottom:)
+    ;(display (bottomLayer state))
+    ;(newline)
     (cond
       ((eq? 'this (cadr dot)) (M_value (caddr dot) state class exception))
       ((eq? 'super (cadr dot)) (M_value (caddr dot) (append (cdr (M_value_var class state class exception)) (bottomLayer state)) class exception))
@@ -628,7 +634,7 @@
 ;M_value_var_class
 (define M_value_var_class
   (lambda (varname state class exception)
-    (display varname)
+    ;(display varname)
     ((lambda (classEnvi)
       (if (isdeclared? varname classEnvi)
         (M_value_var varname classEnvi class exception)
