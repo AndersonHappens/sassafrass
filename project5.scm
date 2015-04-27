@@ -429,18 +429,21 @@
 ;M_state function for try constructs
 (define M_state_try
   (lambda (try state class continue break return oldException)
-    ((lambda (try catch finally)
+    (display 'TRY:)
+       (display try)
+       (newline)
+    ((lambda (try eName catch finally)
       (cond
         ((and (null? finally) (null? catch)) (call/cc (lambda (exception) (M_state try state class continue break return exception))))
         ((and (null? finally) (not (null? catch))) (call/cc (lambda (exception) (M_state try state class continue break return (lambda (e)
                                                                                                                                  (exception
-                                                                                                                                  (M_state_catch e catch state class continue break return oldException)))))))
+                                                                                                                                  (M_state_catch e eName catch state class continue break return oldException)))))))
         ((and (not (null? finally)) (null? catch)) (M_state finally (call/cc (lambda (exception) (M_state try state class continue break return exception))) class continue break return oldExCeption))
         ((and (not (null? finally)) (not (null? catch))) (call/cc (lambda (exception) (M_state finally (M_state try state class continue break return (lambda (e)
                                                                                                                                                         (exception
-                                                                                                                                                         (M_state finally (M_state_catch e catch state class continue break return oldException) class continue break return oldException))))
+                                                                                                                                                         (M_state finally (M_state_catch e eName catch state class continue break return oldException) class continue break return oldException))))
                                                                                                class continue break return oldException))))))
-     (tryBlock try) (catchBlock try) (finallyBlock try))))
+     (tryBlock try) (exceptionName try) (catchBlock try) (finallyBlock try))))
 
 ;helpers for try
 (define tryBlock
@@ -452,6 +455,12 @@
     (if (null? (caddar try))
         '()
         (cons 'begin (caddr(caddar try))))))
+
+(define exceptionName
+  (lambda try
+    (if (null? (caddar try))
+        '()
+        (caadr(caddar try)))))
     
 (define finallyBlock
   (lambda (try)
@@ -463,8 +472,17 @@
 ;the M_state function for evaluating catch blocks
 ;ex is the value of the exception
 (define M_state_catch
-  (lambda (ex catch state class continue break return exception)
-    (removeLayer (M_state catch (addvar 'e ex (addLayer state)) class continue break return exception))))
+  (lambda (ex eName catch state class continue break return exception)
+    (display "Ex value: ")
+    (display ex)
+    (newline)
+    (display "Ex state: ")
+    (display catch)
+    (newline)
+    (display "Ex state: ")
+    (display state)
+    (newline)
+    (removeLayer (M_state catch (addvar eName ex (addLayer state)) class continue break return exception))))
 
 ;M_state_throw
 ;handles the throw statement by calling the exception continuation
@@ -535,15 +553,15 @@
 ;returns the value assigned to varname in the state
 (define M_value_var
   (lambda (varname state class exception)
-    ;(display "Varname: ")
-    ;(display varname)
-    ;(newline)
-    ;(display "State: ")
-    ;(display state)
-    ;(newline)
-    ;(display "Class: ")
-    ;(display class)
-    ;(newline)
+    (display "Varname: ")
+    (display varname)
+    (newline)
+    (display "State: ")
+    (display state)
+    (newline)
+    (display "Class: ")
+    (display class)
+    (newline)
     (cond 
       ((or (null? state) (null? class)) (error 'Variable/function_not_declared_in_scope))
       ((and (list? varname) (eq? 'dot (car varname))) (M_value_dot varname state class exception))
