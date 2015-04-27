@@ -611,10 +611,19 @@
 ;M_value_dot
 (define M_value_dot
   (lambda (dot state class exception)
+    (display 'bottom:)
+    (display (bottomLayer state))
+    (newline)
     (cond
       ((eq? 'this (cadr dot)) (M_value (caddr dot) state class exception))
-      ((eq? 'super (cadr dot)) (M_value (caddr dot) (M_value_var 'super (M_value_var class state class exception) class exception) class exception))
-      (else (M_value (caddr dot) (M_value_var (cadr dot) state class exception) class exception)))))
+      ((eq? 'super (cadr dot)) (M_value (caddr dot) (append (cdr (M_value_var class state class exception)) (bottomLayer state)) class exception))
+      (else (M_value (caddr dot) (append (M_value_var (cadr dot) state class exception) (bottomLayer state)) class exception)))))
+
+(define bottomLayer
+  (lambda (state)
+    (if (null? (cdr state))
+        state
+        (bottomLayer (cdr state)))))
 
 ;M_value_var_class
 (define M_value_var_class
