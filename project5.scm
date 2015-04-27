@@ -598,7 +598,7 @@
   (lambda (dot state class exception)
     (cond
       ((eq? 'this (cadr dot)) (M_value (caddr dot) state class exception))
-      ((eq? 'super (cadr dot)) (M_value (caddr dot) (cdr (M_value_var class state class exception)) class exception))
+      ((eq? 'super (cadr dot)) (M_value (caddr dot) (M_value_var (M_value_var 'super (M_value_var class state class exception) class exception) state class exception) class exception))
       (else (M_value (caddr dot) (M_value_var (cadr dot) state class exception) class exception)))))
 
 ;M_value_var_class
