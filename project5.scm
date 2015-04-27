@@ -365,7 +365,7 @@
 ;adds a class definition to the state
 (define M_state_class
   (lambda (class state)
-    (addvar (className class) (classEniv class) state)))
+    (addvar (className class) (classEniv class state) state)))
 
 ;helper functions for parts of the class
 (define className
@@ -388,8 +388,10 @@
 
 ;makes the enivronment of the class
 (define classEniv
-  (lambda (class)
-    (evaluate (classBody class) (addvar 'super (superClass class) (addLayer (newEnvironment))) class (lambda (v) v) (lambda (v) v) (lambda (v) v) (lambda (v) v))))
+  (lambda (class state)
+    (if (eq? 'none (superClass class))
+        (evaluate (classBody class) (addLayer (newEnvironment)) class (lambda (v) v) (lambda (v) v) (lambda (v) v) (lambda (v) v))
+        (evaluate (classBody class) (addLayer (M_value_var (superClass class) state class (lambda (v) v))) class (lambda (v) v) (lambda (v) v) (lambda (v) v) (lambda (v) v)))))
 
 ;M_state_dot
 ;evaluates the dot expression
