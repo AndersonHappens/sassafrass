@@ -247,9 +247,9 @@
     (cond
       ((isdeclared? (varName assignment) state)(updatevar (varName assignment) (M_value (expr assignment) state class exception) state))
       ((and (eq? 'this (cadr (varName assignment))) (isdeclared? (caddr (varName assignment)) state)) (updatevar (caddr (varName assignment)) (M_value (expr assignment) state class exception) state))
-      ((and (isdeclared? (cadr (varName assignment)) state) (isdeclared? (caddr (varName assignment)) (M_value (cadr (varName assignment)) state class exception))) 
-       (begin (updatevar (caddr (varName assignment)) (M_value (expr assignment) state class exception) (M_value (cadr (varName assignment)) state class exception)) 
-              state))
+      ((and (isdeclared? (cadr (varName assignment)) state) (isdeclared? (caddr (varName assignment)) (M_value (cadr (varName assignment)) state class exception)) 
+            (not (null? (updatevar (caddr (varName assignment)) (M_value (expr assignment) state class exception) (M_value (cadr (varName assignment)) state class exception))))) 
+       state)
       (else (error 'Variable/Function_not_declared)))))
 ;(M_value (caddr (varName assignment)) (M_value (cadr (varName assignment)) state class exception) class exception)
 ; misc definitions for M_state_assign
