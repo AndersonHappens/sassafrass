@@ -547,8 +547,7 @@
 (define M_value_var
   (lambda (varname state class instance exception)
     (cond 
-      ((or (null? state) (null? class)) 
-       (error 'Variable/function_not_declared_in_scope))
+      ((or (null? state) (null? class)) (error 'Variable/function_not_declared_in_scope))
       ((and (list? varname) (eq? 'dot (car varname))) (M_value_dot varname state class instance exception))
       (else
        ((lambda (varval2)
@@ -589,7 +588,8 @@
   (lambda (funcCall state class instance exception)
     (cond
       ((not (= (length (car (M_value_var (func_name funcCall) state class instance exception))) (length (func_param_values funcCall)))) (error 'Function_argument_mismatch))
-      ((list? (func_name funcCall)) (call/cc (lambda (return) (evaluate (func_code_list (M_value_dot (func_name funcCall) state class instance exception)) (create_func_envi (func_name funcCall) (func_param_values funcCall) state class instance exception) (cadr (func_name funcCall)) (M_value (cadr (func_name funcCall)) state class instance exception) (lambda (v) v) (lambda (v) v) return exception))))
+      ((and (list? (func_name funcCall)) (not (eq? 'super (cadr (func_name funcCall))))) (call/cc (lambda (return) (evaluate (func_code_list (M_value_dot (func_name funcCall) state class instance exception)) (create_func_envi (func_name funcCall) (func_param_values funcCall) state class instance exception) (cadr (func_name funcCall)) (M_value (cadr (func_name funcCall)) state class instance exception) (lambda (v) v) (lambda (v) v) return exception))))
+      ((and (list? (func_name funcCall)) (eq? 'super (cadr (func_name funcCall)))) (call/cc (lambda (return) (evaluate (func_code_list (M_value_dot (func_name funcCall) state class instance exception)) (create_func_envi (func_name funcCall) (func_param_values funcCall) state class instance exception) (cadr (func_name funcCall)) instance (lambda (v) v) (lambda (v) v) return exception))))
       (else (call/cc (lambda (return) (evaluate (func_code_list (M_value_var (func_name funcCall) state class instance exception)) (create_func_envi (func_name funcCall) (param_values (func_param_values funcCall) state class instance exception) state class instance exception) class instance (lambda (v) v) (lambda (v) v) return exception))))))) ;never calls this line... or it will infinite loop because evaluating same class and things
 
 ;find the function definition and makes a function call
@@ -646,4 +646,4 @@
             '()
             (M_value_var_class varname state super instance exception)))
          (cdr (M_value_var varname classEnvi class instance exception)))))
-      (M_value_var class state class instance exception))))  
+      (M_value_var class state class instance exception))))
