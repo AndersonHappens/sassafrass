@@ -429,9 +429,9 @@
 ;M_state function for try constructs
 (define M_state_try
   (lambda (try state class continue break return oldException)
-    (display 'TRY:)
-       (display try)
-       (newline)
+    ;(display 'TRY:)
+     ;  (display try)
+      ; (newline)
     ((lambda (try eName catch finally)
       (cond
         ((and (null? finally) (null? catch)) (call/cc (lambda (exception) (M_state try state class continue break return exception))))
@@ -439,9 +439,19 @@
                                                                                                                                  (exception
                                                                                                                                   (M_state_catch e eName catch state class continue break return oldException)))))))
         ((and (not (null? finally)) (null? catch)) (M_state finally (call/cc (lambda (exception) (M_state try state class continue break return exception))) class continue break return oldExCeption))
-        ((and (not (null? finally)) (not (null? catch))) (call/cc (lambda (exception) (M_state finally (M_state try state class continue break return (lambda (e)
-                                                                                                                                                        (exception
-                                                                                                                                                         (M_state finally (M_state_catch e eName catch state class continue break return oldException) class continue break return oldException))))
+        ((and (not (null? finally)) (not (null? catch))) (call/cc (lambda (exception) (M_state finally (M_state try state class
+                                                                                                                (lambda (v) (continue (M_state_finally finally v class continue break return oldException)));continue
+                                                                                                                (lambda (v) (break (M_state finally v class continue break return oldException)));break
+                                                                                                                (lambda (v) (return (M_state finally v class continue break return oldException)));return
+                                                                                                                (lambda (e)
+                                                                                                                  (exception
+                                                                                                                   (M_state finally
+                                                                                                                            (M_state_catch e eName catch state class
+                                                                                                                                           (lambda (v) (continue (M_state finally v class continue break return oldException)))
+                                                                                                                                           (lambda (v) (break (M_state finally v class continue break return oldException)))
+                                                                                                                                           (lambda (v) ((lambda (finallyState v) (return v))(M_state finally state class continue break return oldException) v))
+                                                                                                                                           (lambda (v) ((lambda (finallyState v) (oldException v))(M_state finally state class continue break return oldException) v)))
+                                                                                                                   class continue break return oldException))))
                                                                                                class continue break return oldException))))))
      (tryBlock try) (exceptionName try) (catchBlock try) (finallyBlock try))))
 
@@ -473,15 +483,15 @@
 ;ex is the value of the exception
 (define M_state_catch
   (lambda (ex eName catch state class continue break return exception)
-    (display "Ex value: ")
-    (display ex)
-    (newline)
-    (display "Ex state: ")
-    (display catch)
-    (newline)
-    (display "Ex state: ")
-    (display state)
-    (newline)
+;    (display "Ex value: ")
+ ;   (display ex)
+  ;  (newline)
+   ; (display "Ex state: ")
+    ;(display catch)
+    ;(newline)
+    ;(display "Ex state: ")
+    ;(display state)
+    ;(newline)
     (removeLayer (M_state catch (addvar eName ex (addLayer state)) class continue break return exception))))
 
 ;M_state_throw
@@ -553,15 +563,15 @@
 ;returns the value assigned to varname in the state
 (define M_value_var
   (lambda (varname state class exception)
-    (display "Varname: ")
-    (display varname)
-    (newline)
-    (display "State: ")
-    (display state)
-    (newline)
-    (display "Class: ")
-    (display class)
-    (newline)
+    ;(display "Varname: ")
+    ;(display varname)
+    ;(newline)
+    ;(display "State: ")
+    ;(display state)
+    ;(newline)
+    ;(display "Class: ")
+    ;(display class)
+    ;(newline)
     (cond 
       ((or (null? state) (null? class)) (error 'Variable/function_not_declared_in_scope))
       ((and (list? varname) (eq? 'dot (car varname))) (M_value_dot varname state class exception))
@@ -656,8 +666,8 @@
 ;M_value_var_class
 (define M_value_var_class
   (lambda (varname state class exception)
-    (display varname)
-    (newline)
+    ;(display varname)
+    ;(newline)
     ((lambda (classEnvi)
       (if (isdeclared? varname classEnvi)
         (M_value_var varname classEnvi class exception)
