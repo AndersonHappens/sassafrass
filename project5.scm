@@ -273,8 +273,13 @@
       ((null? (cddr stmt)) (addvar (cadr stmt) '() state))
       (else (addvar (cadr stmt) (M_value (caddr stmt) state class exception) state)))))
 
-;addvar adds a var and it's initial value ('() if undefined) to state at the top level
+;addvar adds a var in a box and it's initial value ('() if undefined) to state at the top level
 (define addvar
+  (lambda (var val state)
+    (cons (cons (cons var (vars (topLayer state))) (cons (cons val (vals (topLayer state))) '())) (cdr state))))
+
+;addvar adds a static var out of a box and it's initial value ('() if undefined) to state at the top level
+(define addstaticvar
   (lambda (var val state)
     (cons (cons (cons var (vars (topLayer state))) (cons (cons (box val) (vals (topLayer state))) '())) (cdr state))))
 
@@ -286,13 +291,26 @@
 ;updates the value of a var
 (define updatevar
   (lambda (var val state)
-    (updatevar2 var val state state)))
+    (updatevar2 var val state state (lambda (v) v))))
 
 (define updatevar2
-  (lambda (var val state originalState)
+  (lambda (var val state originalState rebuild)
     (if (isdeclaredinlayer? var (topLayer state))
+        (setBoxOrVal var val state originalState rebuild)
+        (updatevar2 var val (removeLayer state) originalState (lambda (v) (rebuild (cons (topLayer state) v)))))))
+
+(define setBoxOrVal
+  (lambda (var val state originalState rebuild)
+    (if (box? (car (vals (pruneLayer var (topLayer state)))))
         (begin (set-box! (car (vals (pruneLayer var (topLayer state)))) val) originalState)
-        (updatevar2 var val (removeLayer state) originalState))))
+        (rebuild (cons (editValInLayer var val (topLayer state)) (cdr state))))))
+
+(define editValInLayer
+  (lambda (var val layer)
+    (if (eq? var (firstvarname layer))
+        (list (vars layer) (cons val (cdr (vals layer))))
+        (let ((result (editValInLayer var val (trimlayer layer))))
+          (list (cons (firstvarname layer) (vars result)) (cons (firstvarvalue layer) (vals result)))))))
 
 ; helper method to update a variable in a specific layer
 (define updatevarlayer
@@ -414,13 +432,16 @@
 ;M_state_static_function
 (define M_state_static_function_declaration
   (lambda (funcDef state)
-    (M_state_function_declaration funcDef state)))
+    (addstaticvar (func_name funcDef) (append (list (func_params funcDef)) (list (func_code funcDef))) state)))
 
 ;M_state_static_var
 (define M_state_static_var
   (lambda (stmt state class exception)
-    (M_state_var stmt state class exception)))
-
+    (cond
+      ((and (isdeclaredinlayer? (cadr stmt) (topLayer state)) (null? (cddr stmt))) state)
+      ((isdeclaredinlayer? (cadr stmt) (topLayer state)) (error 'Redefining_Variable))
+      ((null? (cddr stmt)) (addstaticvar (cadr stmt) '() state))
+      (else (addstaticvar (cadr stmt) (M_value (caddr stmt) state class exception) state)))))
 
 ;***************************************************************************************************************************************
 ; M_STATE_TRY, CATCH, FINALLY, EXCEPTION
@@ -603,7 +624,11 @@
 
 (define firstvarvalue
   (lambda (layer)
-    (unbox (car (cadr layer)))))
+    (let ((firstVal (car (cadr layer))))
+          (if (box? firstVal)
+              (unbox firstVal)
+              firstVal))))
+    ;(unbox (car (cadr layer)))))
 
 ;***************************************************************************************************************************************
 ; M_VALUE_FUNCTION
