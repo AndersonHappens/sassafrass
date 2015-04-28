@@ -1,39 +1,24 @@
-class A {
-  var x = 1;
-  var y = 2;
+class Box {
+  static var countAccesses = 0;
+  var size = 1;
 
-  function m() {
-    this.m2();
-  }
-
-  function m2() {
-    return x+y;
-  }
-}
-
-class B extends A {
-  var y = 22;
-  var z = 3;
-
-  function m() {
-    super.m();
-  }
-
-  function m2() {
-    return x+y+z;
-  }
-}
-
-class C extends B {
-  var y = 222;
-  var w = 4;
-
-  function m() {
-    super.m();
+  function setSize(s) {
+    this.size = s;
+    countAccesses = countAccesses + 1;
   }
 
   static function main() {
-    var c = new C();
-    c.m();
+    var x = 0;
+    var c;
+
+    while (x < 8) {
+      var a = new Box();
+      a.setSize(x + countAccesses);
+      if (a.size % 4 == 0)
+        c = a;
+      x = x + 1;
+    }
+
+    return c.size;
   }
 }
