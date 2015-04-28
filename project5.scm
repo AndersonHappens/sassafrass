@@ -12,16 +12,16 @@
 ;parses and interprets the code in the given file
 (define interpret
   (lambda (filename className)
-    (evaluate (append (parser filename) (mainCall (string->symbol className))) (newEnvironment) (string->symbol className) (lambda (v) v) (lambda (v) v) (lambda (v) v) (lambda (v) v))))
+    (evaluate (append (parser filename) (mainCall (string->symbol className))) '() (newEnvironment) (string->symbol className) (lambda (v) v) (lambda (v) v) (lambda (v) v) (lambda (v) v))))
 ;lambda (v) v as placeholders for continue, break, and return, acts as do nothing until in a loop or function.
 
 ;evaluate the parse tree
 (define evaluate
-  (lambda (stmts state class continue break return exception)
+  (lambda (stmts state class instance continue break return exception)
     (cond
       ((not (list? state)) state)
       ((null? stmts) state)
-      (else (evaluate (cdr stmts) (M_state (firststmt stmts) state class continue break return exception) class continue break return exception)))))
+      (else (evaluate (cdr stmts) (M_state (firststmt stmts) state class instance continue break return exception) class instance continue break return exception)))))
 
 ;returns the command to trigger a call to the appropriate main
 ;"((return (funcall (dot <className> main))))"
@@ -135,24 +135,24 @@
 ;Main M_state
 ;checks type of statement, passes it down to the correct Mstate handler
 (define M_state
-  (lambda (stmt state class continue break return exception)
+  (lambda (stmt state class instance continue break return exception)
     ((lambda (stmt state class stmttype)
       (cond
-        ((eq? stmttype 'var) (M_state_var stmt state class exception))
-        ((eq? stmttype '=) (M_state_assign stmt state class exception))
-        ((eq? stmttype 'return) (M_state_return stmt state class return exception))
-        ((eq? stmttype 'if) (M_state_if stmt state class continue break return exception))
-        ((eq? stmttype 'while) (M_state_while stmt state class return exception))
-        ((eq? stmttype 'begin) (M_state_block stmt state class continue break return exception))
+        ((eq? stmttype 'var) (M_state_var stmt state class instance exception))
+        ((eq? stmttype '=) (M_state_assign stmt state class instance exception))
+        ((eq? stmttype 'return) (M_state_return stmt state class instance return exception))
+        ((eq? stmttype 'if) (M_state_if stmt state class instance continue break return exception))
+        ((eq? stmttype 'while) (M_state_while stmt state class instance return exception))
+        ((eq? stmttype 'begin) (M_state_block stmt state class instance continue break return exception))
         ((eq? stmttype 'break) (M_state_break state break))
         ((eq? stmttype 'continue) (M_state_continue state continue))
         ((eq? stmttype 'function) (M_state_function_declaration stmt state))
-        ((eq? stmttype 'funcall) (M_state_function_call stmt state class exception))
+        ((eq? stmttype 'funcall) (M_state_function_call stmt state class instance exception))
         ((eq? stmttype 'class) (M_state_class stmt state))
-        ((eq? stmttype 'static-var) (M_state_static_var stmt state class exception))
+        ((eq? stmttype 'static-var) (M_state_static_var stmt state class '() exception))
         ((eq? stmttype 'static-function) (M_state_static_function_declaration stmt state))
-        ((eq? stmttype 'try) (M_state_try stmt state class continue break return exception))
-        ((eq? stmttype 'throw) (M_state_throw stmt state class exception))
+        ((eq? stmttype 'try) (M_state_try stmt state class instance continue break return exception))
+        ((eq? stmttype 'throw) (M_state_throw stmt state class instance exception))
         (else (error 'Invalid_stmt_type stmt))))
       stmt state class (stmttype stmt))))
 
@@ -266,12 +266,12 @@
 
 ;M_state_var
 (define M_state_var
-  (lambda (stmt state class exception)
+  (lambda (stmt state class instance exception)
     (cond
       ((and (isdeclaredinlayer? (cadr stmt) (topLayer state)) (null? (cddr stmt))) state)
       ((isdeclaredinlayer? (cadr stmt) (topLayer state)) (error 'Redefining_Variable))
       ((null? (cddr stmt)) (addvar (cadr stmt) '() state))
-      (else (addvar (cadr stmt) (M_value (caddr stmt) state class exception) state)))))
+      (else (addvar (cadr stmt) (M_value (caddr stmt) state class instance exception) state)))))
 
 ;addvar adds a var and it's initial value ('() if undefined) to state at the top level
 (define addvar
@@ -402,8 +402,8 @@
 (define classEniv
   (lambda (class state)
     (if (eq? 'none (superClass class))
-        (evaluate (classBody class) (newEnvironment) (className class) (lambda (v) v) (lambda (v) v) (lambda (v) v) (lambda (v) v))
-        (evaluate (classBody class) (addLayer (append (M_value_var (superClass class) state (className class) (lambda (v) v)) (bottomLayer state))) (className class) (lambda (v) v) (lambda (v) v) (lambda (v) v) (lambda (v) v)))))
+        (evaluate (classBody class) (newEnvironment) (className class) '() (lambda (v) v) (lambda (v) v) (lambda (v) v) (lambda (v) v))
+        (evaluate (classBody class) (addLayer (append (M_value_var (superClass class) state (className class) (lambda (v) v)) (bottomLayer state))) (className class) '() (lambda (v) v) (lambda (v) v) (lambda (v) v) (lambda (v) v)))))
 
 ;M_state_dot
 ;evaluates the dot expression
@@ -418,8 +418,8 @@
 
 ;M_state_static_var
 (define M_state_static_var
-  (lambda (stmt state class exception)
-    (M_state_var stmt state class exception)))
+  (lambda (stmt state class instance exception)
+    (M_state_var stmt state class instance exception)))
 
 
 ;***************************************************************************************************************************************
@@ -429,18 +429,31 @@
 ;M_state function for try constructs
 (define M_state_try
   (lambda (try state class continue break return oldException)
-    ((lambda (try catch finally)
+    ;(display 'TRY:)
+     ;  (display try)
+      ; (newline)
+    ((lambda (try eName catch finally)
       (cond
         ((and (null? finally) (null? catch)) (call/cc (lambda (exception) (M_state try state class continue break return exception))))
         ((and (null? finally) (not (null? catch))) (call/cc (lambda (exception) (M_state try state class continue break return (lambda (e)
                                                                                                                                  (exception
-                                                                                                                                  (M_state_catch e catch state class continue break return oldException)))))))
+                                                                                                                                  (M_state_catch e eName catch state class continue break return oldException)))))))
         ((and (not (null? finally)) (null? catch)) (M_state finally (call/cc (lambda (exception) (M_state try state class continue break return exception))) class continue break return oldExCeption))
-        ((and (not (null? finally)) (not (null? catch))) (call/cc (lambda (exception) (M_state finally (M_state try state class continue break return (lambda (e)
-                                                                                                                                                        (exception
-                                                                                                                                                         (M_state finally (M_state_catch e catch state class continue break return oldException) class continue break return oldException))))
+        ((and (not (null? finally)) (not (null? catch))) (call/cc (lambda (exception) (M_state finally (M_state try state class
+                                                                                                                (lambda (v) (continue (M_state_finally finally v class continue break return oldException)));continue
+                                                                                                                (lambda (v) (break (M_state finally v class continue break return oldException)));break
+                                                                                                                (lambda (v) (return (M_state finally v class continue break return oldException)));return
+                                                                                                                (lambda (e)
+                                                                                                                  (exception
+                                                                                                                   (M_state finally
+                                                                                                                            (M_state_catch e eName catch state class
+                                                                                                                                           (lambda (v) (continue (M_state finally v class continue break return oldException)))
+                                                                                                                                           (lambda (v) (break (M_state finally v class continue break return oldException)))
+                                                                                                                                           (lambda (v) ((lambda (finallyState v) (return v))(M_state finally state class continue break return oldException) v))
+                                                                                                                                           (lambda (v) ((lambda (finallyState v) (oldException v))(M_state finally state class continue break return oldException) v)))
+                                                                                                                   class continue break return oldException))))
                                                                                                class continue break return oldException))))))
-     (tryBlock try) (catchBlock try) (finallyBlock try))))
+     (tryBlock try) (exceptionName try) (catchBlock try) (finallyBlock try))))
 
 ;helpers for try
 (define tryBlock
@@ -452,6 +465,12 @@
     (if (null? (caddar try))
         '()
         (cons 'begin (caddr(caddar try))))))
+
+(define exceptionName
+  (lambda try
+    (if (null? (caddar try))
+        '()
+        (caadr(caddar try)))))
     
 (define finallyBlock
   (lambda (try)
@@ -463,8 +482,17 @@
 ;the M_state function for evaluating catch blocks
 ;ex is the value of the exception
 (define M_state_catch
-  (lambda (ex catch state class continue break return exception)
-    (removeLayer (M_state catch (addvar 'e ex (addLayer state)) class continue break return exception))))
+  (lambda (ex eName catch state class continue break return exception)
+;    (display "Ex value: ")
+ ;   (display ex)
+  ;  (newline)
+   ; (display "Ex state: ")
+    ;(display catch)
+    ;(newline)
+    ;(display "Ex state: ")
+    ;(display state)
+    ;(newline)
+    (removeLayer (M_state catch (addvar eName ex (addLayer state)) class continue break return exception))))
 
 ;M_state_throw
 ;handles the throw statement by calling the exception continuation
@@ -477,22 +505,22 @@
 ;***************************************************************************************************************************************
 ; M_value, handles +,-,*,/,% and calls M_value_var if it finds a variable
 (define M_value
-  (lambda (expression state class exception)
+  (lambda (expression state class instance exception)
     (cond
       ((number? expression) expression)
-      ((or (eq? expression '#t) (eq? expression '#f)) (M_bool expression state class exception))
-      ((or (eq? expression 'true) (eq? expression 'false)) (M_bool expression state class exception))
-      ((not (list? expression)) (M_value_var expression state class exception))
-      ((eq? '+ (operator expression)) (+ (M_value (lOperand expression) state class exception) (M_value (rOperand expression) state class exception)))
-      ((eq? '/ (operator expression)) (quotient (M_value (lOperand expression) state class exception) (M_value (rOperand expression) state class exception)))
-      ((eq? '% (operator expression)) (remainder (M_value (lOperand expression) state class exception) (M_value (rOperand expression) state class exception)))
-      ((and (eq? '- (operator expression)) (null? (cddr expression))) (- 0 (M_value (lOperand expression) state class exception)))
-      ((eq? '- (operator expression)) (- (M_value (lOperand expression) state class exception) (M_value (rOperand expression) state class exception)))
-      ((eq? '* (operator expression)) (* (M_value (lOperand expression) state class exception) (M_value (rOperand expression) state class exception)))
-      ((eq? 'funcall (operator expression)) (get_function expression state class exception))
-      ((eq? 'dot (operator expression)) (M_value_dot expression state class exception))
-      ((eq? 'new (operator expression)) (M_value_var (cadr expression) state (cadr expression) exception))
-      (else (M_bool expression state class exception)))))
+      ((or (eq? expression '#t) (eq? expression '#f)) (M_bool expression state class instance exception))
+      ((or (eq? expression 'true) (eq? expression 'false)) (M_bool expression state class instance exception))
+      ((not (list? expression)) (M_value_var expression state class instance exception))
+      ((eq? '+ (operator expression)) (+ (M_value (lOperand expression) state class instance  exception) (M_value (rOperand expression) state class instance exception)))
+      ((eq? '/ (operator expression)) (quotient (M_value (lOperand expression) state class instance exception) (M_value (rOperand expression) state class instance exception)))
+      ((eq? '% (operator expression)) (remainder (M_value (lOperand expression) state class instance exception) (M_value (rOperand expression) state class instance exception)))
+      ((and (eq? '- (operator expression)) (null? (cddr expression))) (- 0 (M_value (lOperand expression) state class instance exception)))
+      ((eq? '- (operator expression)) (- (M_value (lOperand expression) state class instance exception) (M_value (rOperand expression) state class instance exception)))
+      ((eq? '* (operator expression)) (* (M_value (lOperand expression) state class instance exception) (M_value (rOperand expression) state class instance exception)))
+      ((eq? 'funcall (operator expression)) (get_function expression state class instance exception))
+      ((eq? 'dot (operator expression)) (M_value_dot expression state class instance exception))
+      ((eq? 'new (operator expression)) (M_value_var (cadr expression) state (cadr expression) instance exception))
+      (else (M_bool expression state class instance exception)))))
 
 ; M_boolean, handles conditionals and equality ==, !=, <, >, <=, >=
 (define M_bool
@@ -638,8 +666,8 @@
 ;M_value_var_class
 (define M_value_var_class
   (lambda (varname state class exception)
-    (display varname)
-    (newline)
+    ;(display varname)
+    ;(newline)
     ((lambda (classEnvi)
       (if (isdeclared? varname classEnvi)
         (M_value_var varname classEnvi class exception)
